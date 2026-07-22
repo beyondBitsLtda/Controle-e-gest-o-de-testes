@@ -124,7 +124,9 @@ function sbInjectLoginScreen() {
     overlay.style.cssText = 'display:none; position:fixed; inset:0; z-index:20000; background:linear-gradient(135deg, #1c2e4a 0%, #3b6ff0 100%); align-items:center; justify-content:center; font-family:inherit;';
     overlay.innerHTML = `
       <div style="background:#fff; border-radius:16px; width:min(420px, 92vw); padding:34px 30px; box-shadow:0 20px 60px rgba(0,0,0,0.35); text-align:center;">
-        <img src="logo.png" alt="Logo" style="max-height:56px; margin-bottom:10px;" onerror="this.style.display='none'">
+        <div style="display:inline-block; background:#000; border-radius:16px; padding:10px 18px; margin-bottom:12px;">
+            <img src="logo-login.png" alt="Logo" style="max-height:72px; display:block;" onerror="this.parentElement.style.display='none'">
+        </div>
         <h1 style="margin:0 0 4px; font-size:1.35em;">Controle de Plano de Testes</h1>
         <p style="margin:0 0 18px; color:#777; font-size:0.9em;">Entre com sua conta para continuar</p>
 
