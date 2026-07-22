@@ -1,18 +1,20 @@
 // =====================================================================
-// 12-dashboard.js (v2) — Dashboard analítico multi-escopo
+// 12-dashboard.js (v3) — Dashboard analítico multi-escopo
 // ---------------------------------------------------------------------
-// Escopos de análise:
-//   - Run atual (dados na tela)
-//   - Nuvem: um projeto, vários projetos, runs específicas ou TUDO
-// Filtros adicionais: tipo de teste, tag e período (datas).
-// Fonte de nuvem: tabela cloud_runs do Supabase (módulo 11).
+// v3:
+//   - Layout de TELA ÚNICA: ocupa a viewport sem scroll vertical,
+//     KPIs compactos em faixa e 6 gráficos em grade 3x2
+//   - REGRA DE NEGÓCIO: caso com ticket em aberto conta como REPROVADO
+//     (mesmo que o resultado do card esteja pendente/limpo)
+// Escopos: run atual | nuvem (projetos, runs específicas ou tudo)
+// Filtros: tipo de teste, tag e período de criação do caso.
 // =====================================================================
 
 let dbChartInstances = [];
-let dbCloudIndex = null;        // lista [{id, project_name, run_name, updated_at}]
-let dbStateCache = {};          // cache de states por run id
-let dbSelectedRuns = new Set(); // ids de runs selecionadas no escopo nuvem
-let dbScope = 'current';        // 'current' | 'cloud'
+let dbCloudIndex = null;
+let dbStateCache = {};
+let dbSelectedRuns = new Set();
+let dbScope = 'current';
 
 // ---------------------------------------------------------------------
 // COLETA DE DADOS
@@ -45,17 +47,24 @@ function dbCaseCreatedAt(c) {
     return h ? new Date(h.timestamp) : null;
 }
 
-// Junta casos e tickets de todos os estados do escopo escolhido
+// Prepara um "estado" (data + ticketData) marcando em cada caso se há
+// ticket em aberto vinculado a ele. Retorna cópias — não altera o original.
+function dbPrepareState(caseMap, ticketMap) {
+    const openTicketCaseIds = new Set();
+    const tickets = Object.values(ticketMap || {});
+    tickets.forEach(t => {
+        if (t.status !== 'Fechado' && t.originalCaseId) openTicketCaseIds.add(t.originalCaseId);
+    });
+    const cases = Object.entries(caseMap || {}).map(([key, c]) =>
+        ({ ...c, __openTicket: openTicketCaseIds.has(key) }));
+    return { cases, tickets };
+}
+
 async function dbCollectDataset() {
     if (dbScope === 'current') {
-        return {
-            cases: Object.values(testCaseData || {}),
-            tickets: Object.values(ticketData || {}),
-            runsCount: 1,
-            label: currentLoadedProjectName || 'Run atual (tela)'
-        };
+        const prep = dbPrepareState(testCaseData, ticketData);
+        return { ...prep, runsCount: 1, label: currentLoadedProjectName || 'Run atual (tela)' };
     }
-    // Escopo nuvem
     const client = sbGetClient();
     if (!client) throw new Error('Configure e faça login no Supabase para usar o escopo Nuvem.');
     const ids = [...dbSelectedRuns];
@@ -64,8 +73,7 @@ async function dbCollectDataset() {
     const missing = ids.filter(id => !dbStateCache[id]);
     if (missing.length > 0) {
         dbSetInfo(`Baixando ${missing.length} run(s) da nuvem...`);
-        const { data, error } = await client.from('cloud_runs')
-            .select('id, state').in('id', missing);
+        const { data, error } = await client.from('cloud_runs').select('id, state').in('id', missing);
         if (error) throw new Error(error.message);
         (data || []).forEach(r => { dbStateCache[r.id] = r.state; });
     }
@@ -74,22 +82,18 @@ async function dbCollectDataset() {
     ids.forEach(id => {
         const st = dbStateCache[id];
         if (!st) return;
-        Object.values(st.data || {}).forEach(c => cases.push(c));
-        Object.values(st.ticketData || {}).forEach(t => tickets.push(t));
+        const prep = dbPrepareState(st.data, st.ticketData);
+        cases.push(...prep.cases);
+        tickets.push(...prep.tickets);
     });
 
-    const runNames = ids.map(id => {
-        const meta = (dbCloudIndex || []).find(r => r.id === id);
-        return meta ? meta.run_name : '';
-    }).filter(Boolean);
+    const runNames = ids.map(id => (dbCloudIndex || []).find(r => r.id === id)?.run_name).filter(Boolean);
     const label = ids.length === (dbCloudIndex || []).length && ids.length > 1
         ? 'Todos os projetos'
         : (runNames.length <= 2 ? runNames.join(' + ') : `${ids.length} runs selecionadas`);
-
     return { cases, tickets, runsCount: ids.length, label };
 }
 
-// Aplica os filtros extras (tipo de teste, tag, período) sobre os casos
 function dbApplyFilters(cases, tickets) {
     const tipo = document.getElementById('db-filter-tipo')?.value || '';
     const tag = document.getElementById('db-filter-tag')?.value || '';
@@ -110,13 +114,10 @@ function dbApplyFilters(cases, tickets) {
         return true;
     });
 
-    // Tickets acompanham os casos filtrados (pelo id do caso de origem)
-    const keptCaseIds = new Set(filteredCases.map(c => c.id));
     const anyCaseFilter = !!(tipo || tag || fromD || toD);
-    const filteredTickets = anyCaseFilter
-        ? tickets.filter(t => keptCaseIds.has(t.originalCaseId) || keptCaseIds.size === 0)
-        : tickets;
-
+    if (!anyCaseFilter) return { cases: filteredCases, tickets };
+    const keptIds = new Set(filteredCases.map(c => 'test-case-' + c.id));
+    const filteredTickets = tickets.filter(t => keptIds.has(t.originalCaseId));
     return { cases: filteredCases, tickets: filteredTickets };
 }
 
@@ -124,8 +125,7 @@ function dbComputeMetrics(cases, tickets) {
     const m = {
         total: cases.length,
         aprovados: 0, reprovados: 0, invalidos: 0, pendentes: 0,
-        retestes: 0,
-        byTipoTeste: {}, byTipoFalha: {}, byTag: {},
+        retestes: 0, byTipoTeste: {}, byTipoFalha: {}, byTag: {},
         execTimes: [],
         totalEvidences: dbCountEvidences(cases) + dbCountEvidences(tickets),
         tickets: { total: tickets.length, byStatus: {}, byPriority: {}, byAssignee: {},
@@ -134,15 +134,19 @@ function dbComputeMetrics(cases, tickets) {
 
     cases.forEach(c => {
         const r = c.resultado || '';
-        if (r === 'Aprovado') m.aprovados++;
-        else if (r === 'Reprovado') m.reprovados++;
-        else if (r === 'Inválido') m.invalidos++;
+        // REGRA: ticket em aberto vinculado ao caso => caso é REPROVADO,
+        // independente do resultado atual do card.
+        const efetivo = c.__openTicket ? 'Reprovado' : r;
+
+        if (efetivo === 'Aprovado') m.aprovados++;
+        else if (efetivo === 'Reprovado') m.reprovados++;
+        else if (efetivo === 'Inválido') m.invalidos++;
         else m.pendentes++;
         if (c.isReTest) m.retestes++;
 
         const tt = c.tipoTeste && !c.tipoTeste.startsWith('Selecione') ? c.tipoTeste : 'Não definido';
         m.byTipoTeste[tt] = (m.byTipoTeste[tt] || 0) + 1;
-        if (r === 'Reprovado') {
+        if (efetivo === 'Reprovado') {
             const tf = c.tipoFalha && c.tipoFalha !== 'N/A' ? c.tipoFalha : 'Não classificado';
             m.byTipoFalha[tf] = (m.byTipoFalha[tf] || 0) + 1;
         }
@@ -180,7 +184,7 @@ function dbComputeMetrics(cases, tickets) {
 }
 
 // ---------------------------------------------------------------------
-// ESCOPO NUVEM — seleção de projetos e runs
+// ESCOPO NUVEM
 // ---------------------------------------------------------------------
 async function dbLoadCloudIndex() {
     const client = sbGetClient();
@@ -197,19 +201,25 @@ async function dbLoadCloudIndex() {
     dbRenderScopePicker();
 }
 
-function dbToggleRun(id, checked) {
-    if (checked) dbSelectedRuns.add(id); else dbSelectedRuns.delete(id);
-}
+function dbToggleRun(id, checked) { if (checked) dbSelectedRuns.add(id); else dbSelectedRuns.delete(id); }
 
 function dbToggleProject(projectName, checked) {
-    (dbCloudIndex || []).filter(r => r.project_name === projectName)
-        .forEach(r => dbToggleRun(r.id, checked));
+    (dbCloudIndex || []).filter(r => r.project_name === projectName).forEach(r => dbToggleRun(r.id, checked));
     dbRenderScopePicker();
 }
 
 function dbSelectAllRuns(all) {
     dbSelectedRuns = new Set(all ? (dbCloudIndex || []).map(r => r.id) : []);
     dbRenderScopePicker();
+    if (all) dbRender();
+}
+
+function dbToggleCloudPicker(show) {
+    const panel = document.getElementById('db-cloud-picker-wrap');
+    if (!panel) return;
+    panel.style.display = (show === undefined)
+        ? (panel.style.display === 'none' ? 'block' : 'none')
+        : (show ? 'block' : 'none');
 }
 
 function dbRenderScopePicker() {
@@ -221,29 +231,28 @@ function dbRenderScopePicker() {
     const groups = {};
     dbCloudIndex.forEach(r => { (groups[r.project_name] = groups[r.project_name] || []).push(r); });
 
-    let html = `<div style="margin-bottom:6px;">
+    let html = `<div style="margin-bottom:6px; display:flex; gap:6px; align-items:center;">
         <button class="btn" style="background:#3b6ff0; padding:3px 10px; font-size:0.8em;" onclick="dbSelectAllRuns(true)">✅ Tudo</button>
         <button class="btn" style="background:#777; padding:3px 10px; font-size:0.8em;" onclick="dbSelectAllRuns(false)">✖️ Limpar</button>
-        <span style="font-size:0.8em; color:#666; margin-left:6px;">${dbSelectedRuns.size} run(s) selecionada(s)</span>
+        <span style="font-size:0.8em; color:#666;">${dbSelectedRuns.size} run(s)</span>
     </div>`;
 
     Object.keys(groups).sort().forEach(p => {
         const runs = groups[p];
         const allChecked = runs.every(r => dbSelectedRuns.has(r.id));
         const someChecked = runs.some(r => dbSelectedRuns.has(r.id));
-        html += `<div style="border:1px solid #dde3f0; border-radius:8px; padding:6px 10px; margin-bottom:5px; background:#fff;">
-            <label style="font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px;">
+        html += `<div style="border:1px solid #dde3f0; border-radius:8px; padding:5px 9px; margin-bottom:4px; background:#fff;">
+            <label style="font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px; font-size:0.88em;">
                 <input type="checkbox" ${allChecked ? 'checked' : ''} ${!allChecked && someChecked ? 'style="accent-color:#e6a800;"' : ''}
                        onchange="dbToggleProject('${p.replace(/'/g, "\\'")}', this.checked)">
-                📁 ${p} <span style="font-weight:normal; color:#888; font-size:0.8em;">(${runs.length})</span>
+                📁 ${p} <span style="font-weight:normal; color:#888; font-size:0.85em;">(${runs.length})</span>
             </label>
-            <div style="margin-left:22px; margin-top:2px;">`;
+            <div style="margin-left:20px;">`;
         runs.forEach(r => {
             const when = new Date(r.updated_at).toLocaleDateString('pt-BR');
-            html += `<label style="display:flex; align-items:center; gap:6px; font-size:0.87em; cursor:pointer; padding:1px 0;">
-                <input type="checkbox" ${dbSelectedRuns.has(r.id) ? 'checked' : ''}
-                       onchange="dbToggleRun('${r.id}', this.checked)">
-                ▶️ ${r.run_name} <span style="color:#aaa; font-size:0.85em;">${when}</span>
+            html += `<label style="display:flex; align-items:center; gap:6px; font-size:0.84em; cursor:pointer; padding:1px 0;">
+                <input type="checkbox" ${dbSelectedRuns.has(r.id) ? 'checked' : ''} onchange="dbToggleRun('${r.id}', this.checked)">
+                ▶️ ${r.run_name} <span style="color:#aaa;">${when}</span>
             </label>`;
         });
         html += `</div></div>`;
@@ -253,26 +262,28 @@ function dbRenderScopePicker() {
 
 function dbSwitchScope(scope) {
     dbScope = scope;
-    document.getElementById('db-scope-current-btn').style.opacity = scope === 'current' ? '1' : '0.5';
-    document.getElementById('db-scope-cloud-btn').style.opacity = scope === 'cloud' ? '1' : '0.5';
-    const picker = document.getElementById('db-cloud-picker-wrap');
-    picker.style.display = scope === 'cloud' ? 'block' : 'none';
-    if (scope === 'cloud' && dbCloudIndex === null) dbLoadCloudIndex();
-    if (scope === 'current') dbRender();
+    const cur = document.getElementById('db-scope-current-btn');
+    const cld = document.getElementById('db-scope-cloud-btn');
+    if (cur) cur.style.opacity = scope === 'current' ? '1' : '0.5';
+    if (cld) cld.style.opacity = scope === 'cloud' ? '1' : '0.5';
+    if (scope === 'cloud') {
+        dbToggleCloudPicker(true);
+        if (dbCloudIndex === null) dbLoadCloudIndex();
+    } else {
+        dbToggleCloudPicker(false);
+        dbRender();
+    }
 }
 
 // ---------------------------------------------------------------------
-// INTERFACE
+// INTERFACE — layout de tela única
 // ---------------------------------------------------------------------
-function dbSetInfo(msg) {
-    const el = document.getElementById('db-info');
-    if (el) el.textContent = msg;
-}
+function dbSetInfo(msg) { const el = document.getElementById('db-info'); if (el) el.textContent = msg; }
 
-function dbKpiCard(value, label, color) {
-    return `<div style="flex:1; min-width:118px; background:#fff; border:1px solid #e5e8ef; border-radius:10px; padding:13px 8px; text-align:center;">
-        <div style="font-size:1.6em; font-weight:700; color:${color};">${value}</div>
-        <div style="font-size:0.72em; color:#778; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">${label}</div>
+function dbKpi(value, label, color) {
+    return `<div style="flex:1 1 0; min-width:0; background:#fff; border:1px solid #e5e8ef; border-radius:8px; padding:6px 4px; text-align:center;">
+        <div style="font-size:clamp(0.95em, 1.4vw, 1.35em); font-weight:700; color:${color}; line-height:1.1; white-space:nowrap;">${value}</div>
+        <div style="font-size:0.6em; color:#778; text-transform:uppercase; letter-spacing:0.3px; margin-top:1px; line-height:1.2;">${label}</div>
     </div>`;
 }
 
@@ -280,7 +291,6 @@ function dbOpenDashboard() {
     dbInjectModal();
     document.getElementById('dashboard-modal').style.display = 'flex';
     dbSwitchScope(Object.keys(testCaseData || {}).length > 0 ? 'current' : 'cloud');
-    if (dbScope === 'current') dbRender();
 }
 
 function dbCloseDashboard() {
@@ -294,75 +304,71 @@ function dbInjectModal() {
     if (document.getElementById('dashboard-modal')) return;
     const modal = document.createElement('div');
     modal.id = 'dashboard-modal';
-    modal.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(20,25,40,0.6); z-index:10000; align-items:flex-start; justify-content:center; overflow-y:auto; padding:24px 12px;';
+    modal.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(20,25,40,0.65); z-index:10000; align-items:center; justify-content:center; padding:10px;';
     modal.onclick = (e) => { if (e.target.id === 'dashboard-modal') dbCloseDashboard(); };
     modal.innerHTML = `
-      <div style="background:#f4f6fa; border-radius:14px; width:min(1150px, 96vw); padding:22px; box-shadow:0 12px 50px rgba(0,0,0,0.3);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
-            <h2 style="margin:0; font-size:1.25em;">📊 Dashboard <span id="db-scope-label" style="font-size:0.65em; color:#667; font-weight:normal;"></span></h2>
-            <button onclick="dbCloseDashboard()" style="border:none; background:none; font-size:1.6em; cursor:pointer;">&times;</button>
+      <div style="background:#f4f6fa; border-radius:12px; width:98vw; height:96vh; padding:12px 16px; box-shadow:0 12px 50px rgba(0,0,0,0.3); display:flex; flex-direction:column; gap:8px; overflow:hidden; position:relative;">
+
+        <!-- LINHA 1: título + escopo + filtros + fechar -->
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; flex-shrink:0;">
+            <h2 style="margin:0; font-size:1.05em; white-space:nowrap;">📊 Dashboard</h2>
+            <span id="db-scope-label" style="font-size:0.78em; color:#667;"></span>
+            <button id="db-scope-current-btn" class="btn" style="background:#8e44ad; padding:4px 12px; font-size:0.8em;" onclick="dbSwitchScope('current')">🖥️ Run atual</button>
+            <button id="db-scope-cloud-btn" class="btn" style="background:#3ecf8e; padding:4px 12px; font-size:0.8em; opacity:0.5;" onclick="dbSwitchScope('cloud'); dbToggleCloudPicker();">☁️ Nuvem ▾</button>
+            <span id="db-info" style="font-size:0.78em; color:#3b6ff0;"></span>
+
+            <span style="flex:1;"></span>
+
+            <select id="db-filter-tipo" class="form-input" style="padding:4px 6px; font-size:0.8em;" onchange="dbRender()" title="Tipo de teste">
+                <option value="">Tipo: Todos</option>
+                <option value="Unidade">Unidade</option><option value="Componente">Componente</option><option value="Sistema">Sistema</option>
+            </select>
+            <select id="db-filter-tag" class="form-input" style="padding:4px 6px; font-size:0.8em;" onchange="dbRender()" title="Tag">
+                <option value="">Tag: Todas</option>
+            </select>
+            <input type="date" id="db-filter-from" class="form-input" style="padding:3px 6px; font-size:0.8em;" onchange="dbRender()" title="Criados a partir de">
+            <input type="date" id="db-filter-to" class="form-input" style="padding:3px 6px; font-size:0.8em;" onchange="dbRender()" title="Criados até">
+            <button class="btn" style="background:#777; padding:4px 10px; font-size:0.78em;" onclick="dbClearFilters()">Limpar</button>
+            <button onclick="dbCloseDashboard()" style="border:none; background:none; font-size:1.5em; cursor:pointer; line-height:1;">&times;</button>
         </div>
 
-        <!-- ESCOPO -->
-        <div style="background:#fff; border:1px solid #e5e8ef; border-radius:10px; padding:12px; margin-bottom:12px;">
-            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                <strong style="font-size:0.9em;">Analisar:</strong>
-                <button id="db-scope-current-btn" class="btn" style="background:#8e44ad; padding:5px 14px; font-size:0.85em;" onclick="dbSwitchScope('current')">🖥️ Run atual</button>
-                <button id="db-scope-cloud-btn" class="btn" style="background:#3ecf8e; padding:5px 14px; font-size:0.85em; opacity:0.5;" onclick="dbSwitchScope('cloud')">☁️ Nuvem (projetos/runs)</button>
-                <span id="db-info" style="font-size:0.83em; color:#3b6ff0;"></span>
-            </div>
-            <div id="db-cloud-picker-wrap" style="display:none; margin-top:10px;">
-                <div id="db-cloud-picker" style="max-height:230px; overflow-y:auto; background:#f7f9fd; border:1px solid #e5e8ef; border-radius:8px; padding:8px;"></div>
-                <button class="btn" style="background:#8e44ad; padding:6px 16px; font-size:0.9em; margin-top:8px;" onclick="dbRender()">📊 Gerar análise da seleção</button>
+        <!-- PAINEL FLUTUANTE de seleção da nuvem (não empurra o layout) -->
+        <div id="db-cloud-picker-wrap" style="display:none; position:absolute; top:48px; left:16px; z-index:20; width:min(460px, 90%); background:#fff; border:1px solid #cdd6e8; border-radius:10px; padding:10px; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+            <div id="db-cloud-picker" style="max-height:46vh; overflow-y:auto;"></div>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+                <button class="btn" style="background:#8e44ad; padding:5px 14px; font-size:0.85em; flex:1;" onclick="dbToggleCloudPicker(false); dbRender();">📊 Gerar análise da seleção</button>
+                <button class="btn" style="background:#777; padding:5px 14px; font-size:0.85em;" onclick="dbToggleCloudPicker(false)">Fechar</button>
             </div>
         </div>
 
-        <!-- FILTROS -->
-        <div style="background:#fff; border:1px solid #e5e8ef; border-radius:10px; padding:12px; margin-bottom:14px; display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
-            <div>
-                <label style="display:block; font-size:0.75em; color:#667; margin-bottom:2px;">Tipo de teste</label>
-                <select id="db-filter-tipo" class="form-input" style="min-width:130px;" onchange="dbRender()">
-                    <option value="">Todos</option>
-                    <option>Unidade</option><option>Componente</option><option>Sistema</option>
-                </select>
-            </div>
-            <div>
-                <label style="display:block; font-size:0.75em; color:#667; margin-bottom:2px;">Tag</label>
-                <select id="db-filter-tag" class="form-input" style="min-width:130px;" onchange="dbRender()">
-                    <option value="">Todas</option>
-                </select>
-            </div>
-            <div>
-                <label style="display:block; font-size:0.75em; color:#667; margin-bottom:2px;">De (criação do caso)</label>
-                <input type="date" id="db-filter-from" class="form-input" onchange="dbRender()">
-            </div>
-            <div>
-                <label style="display:block; font-size:0.75em; color:#667; margin-bottom:2px;">Até</label>
-                <input type="date" id="db-filter-to" class="form-input" onchange="dbRender()">
-            </div>
-            <button class="btn" style="background:#777; padding:6px 12px; font-size:0.85em;" onclick="dbClearFilters()">Limpar filtros</button>
-        </div>
+        <!-- LINHA 2: faixa única de KPIs -->
+        <div id="db-kpis" style="display:flex; gap:6px; flex-shrink:0;"></div>
 
-        <div id="db-kpis" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;"></div>
-        <div id="db-kpis-2" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px;"></div>
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:14px;">
-            <div style="background:#fff; border:1px solid #e5e8ef; border-radius:10px; padding:14px;">
-                <h4 style="margin:0 0 10px;">Resultados dos Casos</h4><canvas id="db-chart-results" height="220"></canvas>
+        <!-- LINHA 3: grade de gráficos 3x2 preenchendo o restante -->
+        <div style="flex:1; min-height:0; display:grid; grid-template-columns:repeat(3, 1fr); grid-template-rows:repeat(2, 1fr); gap:8px;">
+            <div style="background:#fff; border:1px solid #e5e8ef; border-radius:10px; padding:8px 10px; display:flex; flex-direction:column; min-height:0;">
+                <h4 style="margin:0 0 4px; font-size:0.82em;">Resultados dos Casos</h4>
+                <div style="flex:1; min-height:0; position:relative;"><canvas id="db-chart-results"></canvas></div>
             </div>
-            <div style="background:#fff; border:1px solid #e5e8ef; border-radius:10px; padding:14px;">
-                <h4 style="margin:0 0 10px;">Tipos de Falha (reprovados)</h4><canvas id="db-chart-failures" height="220"></canvas>
+            <div style="background:#fff; border:1px solid #e5e8ef; border-radius:10px; padding:8px 10px; display:flex; flex-direction:column; min-height:0;">
+                <h4 style="margin:0 0 4px; font-size:0.82em;">Tipos de Falha (reprovados)</h4>
+                <div style="flex:1; min-height:0; position:relative;"><canvas id="db-chart-failures"></canvas></div>
             </div>
-            <div style="background:#fff; border:1px solid #e5e8ef; border-radius:10px; padding:14px;">
-                <h4 style="margin:0 0 10px;">Casos por Tipo de Teste</h4><canvas id="db-chart-types" height="220"></canvas>
+            <div style="background:#fff; border:1px solid #e5e8ef; border-radius:10px; padding:8px 10px; display:flex; flex-direction:column; min-height:0;">
+                <h4 style="margin:0 0 4px; font-size:0.82em;">Casos por Tipo de Teste</h4>
+                <div style="flex:1; min-height:0; position:relative;"><canvas id="db-chart-types"></canvas></div>
             </div>
-            <div style="background:#fff; border:1px solid #e5e8ef; border-radius:10px; padding:14px;">
-                <h4 style="margin:0 0 10px;">Tickets por Status</h4><canvas id="db-chart-ticket-status" height="220"></canvas>
+            <div style="background:#fff; border:1px solid #e5e8ef; border-radius:10px; padding:8px 10px; display:flex; flex-direction:column; min-height:0;">
+                <h4 style="margin:0 0 4px; font-size:0.82em;">Tickets por Status</h4>
+                <div style="flex:1; min-height:0; position:relative;"><canvas id="db-chart-ticket-status"></canvas></div>
             </div>
-            <div style="background:#fff; border:1px solid #e5e8ef; border-radius:10px; padding:14px;">
-                <h4 style="margin:0 0 10px;">Tickets por Prioridade</h4><canvas id="db-chart-ticket-priority" height="220"></canvas>
+            <div style="background:#fff; border:1px solid #e5e8ef; border-radius:10px; padding:8px 10px; display:flex; flex-direction:column; min-height:0;">
+                <h4 style="margin:0 0 4px; font-size:0.82em;">Tickets por Prioridade</h4>
+                <div style="flex:1; min-height:0; position:relative;"><canvas id="db-chart-ticket-priority"></canvas></div>
             </div>
-            <div style="background:#fff; border:1px solid #e5e8ef; border-radius:10px; padding:14px;">
-                <h4 style="margin:0 0 10px;">Tickets por Responsável</h4><div id="db-assignee-table" style="font-size:0.9em;"></div>
+            <div style="background:#fff; border:1px solid #e5e8ef; border-radius:10px; padding:8px 10px; display:flex; flex-direction:column; min-height:0;">
+                <h4 style="margin:0 0 4px; font-size:0.82em;">Tickets por Responsável</h4>
+                <div id="db-assignee-table" style="flex:1; overflow-y:auto; font-size:0.85em;"></div>
             </div>
         </div>
       </div>`;
@@ -370,8 +376,8 @@ function dbInjectModal() {
 }
 
 function dbClearFilters() {
-    ['db-filter-tipo', 'db-filter-tag'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-    ['db-filter-from', 'db-filter-to'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['db-filter-tipo', 'db-filter-tag', 'db-filter-from', 'db-filter-to']
+        .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     dbRender();
 }
 
@@ -381,7 +387,7 @@ function dbPopulateTagFilter(cases) {
     const current = sel.value;
     const tags = new Set();
     cases.forEach(c => (c.tags || []).forEach(t => tags.add(t)));
-    sel.innerHTML = '<option value="">Todas</option>' +
+    sel.innerHTML = '<option value="">Tag: Todas</option>' +
         [...tags].sort().map(t => `<option ${t === current ? 'selected' : ''}>${t}</option>`).join('');
 }
 
@@ -390,39 +396,34 @@ function dbPopulateTagFilter(cases) {
 // ---------------------------------------------------------------------
 async function dbRender() {
     let dataset;
-    try {
-        dataset = await dbCollectDataset();
-    } catch (e) {
-        dbSetInfo('⚠️ ' + e.message);
-        return;
-    }
+    try { dataset = await dbCollectDataset(); }
+    catch (e) { dbSetInfo('⚠️ ' + e.message); return; }
     dbSetInfo('');
     dbPopulateTagFilter(dataset.cases);
     const { cases, tickets } = dbApplyFilters(dataset.cases, dataset.tickets);
     const m = dbComputeMetrics(cases, tickets);
 
     document.getElementById('db-scope-label').textContent =
-        `— ${dataset.label} (${dataset.runsCount} run${dataset.runsCount > 1 ? 's' : ''}${m.total !== dataset.cases.length ? ', filtrado' : ''})`;
+        `${dataset.label} · ${dataset.runsCount} run${dataset.runsCount > 1 ? 's' : ''}${m.total !== dataset.cases.length ? ' · filtrado' : ''}`;
 
     document.getElementById('db-kpis').innerHTML =
-        dbKpiCard(m.total, 'Total de Casos', '#2c3e50') +
-        dbKpiCard(m.aprovados, 'Aprovados', '#1e8e3e') +
-        dbKpiCard(m.reprovados, 'Reprovados', '#c0392b') +
-        dbKpiCard(m.invalidos, 'Inválidos', '#8e44ad') +
-        dbKpiCard(m.pendentes, 'Pendentes', '#e6a800') +
-        dbKpiCard(m.taxaAprovacao + '%', 'Taxa de Aprovação', m.taxaAprovacao >= 70 ? '#1e8e3e' : '#c0392b');
-
-    document.getElementById('db-kpis-2').innerHTML =
-        dbKpiCard(dbFormatMs(m.avgExecTime), 'Tempo Médio de Execução', '#3b6ff0') +
-        dbKpiCard(m.tickets.total, 'Total de Tickets', '#2c3e50') +
-        dbKpiCard(m.tickets.abertos, 'Tickets Abertos', '#e6a800') +
-        dbKpiCard(m.tickets.fechados, 'Tickets Fechados', '#1e8e3e') +
-        dbKpiCard(dbFormatMs(m.tickets.avgResolutionTime), 'Tempo Médio de Resolução', '#3b6ff0') +
-        dbKpiCard(m.retestes, 'Re-testes', '#8e44ad') +
-        dbKpiCard(m.totalEvidences, 'Evidências', '#2c3e50');
+        dbKpi(m.total, 'Casos', '#2c3e50') +
+        dbKpi(m.aprovados, 'Aprovados', '#1e8e3e') +
+        dbKpi(m.reprovados, 'Reprovados', '#c0392b') +
+        dbKpi(m.invalidos, 'Inválidos', '#8e44ad') +
+        dbKpi(m.pendentes, 'Pendentes', '#e6a800') +
+        dbKpi(m.taxaAprovacao + '%', 'Aprovação', m.taxaAprovacao >= 70 ? '#1e8e3e' : '#c0392b') +
+        dbKpi(dbFormatMs(m.avgExecTime), 'T. Execução', '#3b6ff0') +
+        dbKpi(m.tickets.total, 'Tickets', '#2c3e50') +
+        dbKpi(m.tickets.abertos, 'Tkt Abertos', '#e6a800') +
+        dbKpi(m.tickets.fechados, 'Tkt Fechados', '#1e8e3e') +
+        dbKpi(dbFormatMs(m.tickets.avgResolutionTime), 'T. Resolução', '#3b6ff0') +
+        dbKpi(m.retestes, 'Re-testes', '#8e44ad') +
+        dbKpi(m.totalEvidences, 'Evidências', '#2c3e50');
 
     dbChartInstances.forEach(c => { try { c.destroy(); } catch (e) {} });
     dbChartInstances = [];
+    const base = { responsive: true, maintainAspectRatio: false };
     const mk = (id, config) => {
         const ctx = document.getElementById(id);
         if (ctx) dbChartInstances.push(new Chart(ctx, config));
@@ -433,7 +434,7 @@ async function dbRender() {
         data: { labels: ['Aprovados', 'Reprovados', 'Inválidos', 'Pendentes'],
             datasets: [{ data: [m.aprovados, m.reprovados, m.invalidos, m.pendentes],
                 backgroundColor: ['#1e8e3e', '#c0392b', '#8e44ad', '#e6a800'] }] },
-        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+        options: { ...base, plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } } } }
     });
 
     const failLabels = Object.keys(m.byTipoFalha);
@@ -442,8 +443,9 @@ async function dbRender() {
         data: { labels: failLabels.length ? failLabels : ['Sem reprovações'],
             datasets: [{ label: 'Casos', data: failLabels.length ? failLabels.map(k => m.byTipoFalha[k]) : [0],
                 backgroundColor: '#c0392b' }] },
-        options: { responsive: true, plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+        options: { ...base, plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { precision: 0, font: { size: 10 } } },
+                      x: { ticks: { font: { size: 9 } } } } }
     });
 
     const typeLabels = Object.keys(m.byTipoTeste);
@@ -451,8 +453,9 @@ async function dbRender() {
         type: 'bar',
         data: { labels: typeLabels, datasets: [{ label: 'Casos',
             data: typeLabels.map(k => m.byTipoTeste[k]), backgroundColor: '#3b6ff0' }] },
-        options: { responsive: true, plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+        options: { ...base, plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { precision: 0, font: { size: 10 } } },
+                      x: { ticks: { font: { size: 9 } } } } }
     });
 
     const tsLabels = Object.keys(m.tickets.byStatus);
@@ -461,8 +464,9 @@ async function dbRender() {
         data: { labels: tsLabels.length ? tsLabels : ['Sem tickets'],
             datasets: [{ label: 'Tickets', data: tsLabels.length ? tsLabels.map(k => m.tickets.byStatus[k]) : [0],
                 backgroundColor: '#e6a800' }] },
-        options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } },
-            scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } }
+        options: { ...base, indexAxis: 'y', plugins: { legend: { display: false } },
+            scales: { x: { beginAtZero: true, ticks: { precision: 0, font: { size: 10 } } },
+                      y: { ticks: { font: { size: 9 } } } } }
     });
 
     const tpLabels = ['Crítica', 'Alta', 'Média', 'Baixa'].filter(p => m.tickets.byPriority[p]);
@@ -471,15 +475,15 @@ async function dbRender() {
         data: { labels: tpLabels.length ? tpLabels : ['Sem tickets'],
             datasets: [{ data: tpLabels.length ? tpLabels.map(k => m.tickets.byPriority[k]) : [1],
                 backgroundColor: ['#c0392b', '#e67e22', '#e6a800', '#1e8e3e'] }] },
-        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+        options: { ...base, plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } } } }
     });
 
     const assignees = Object.entries(m.tickets.byAssignee).sort((a, b) => b[1] - a[1]);
     document.getElementById('db-assignee-table').innerHTML = assignees.length
         ? '<table style="width:100%; border-collapse:collapse;">' +
           assignees.map(([who, n]) =>
-              `<tr style="border-bottom:1px solid #eee;"><td style="padding:6px 4px;">👤 ${who}</td>
-               <td style="padding:6px 4px; text-align:right; font-weight:600;">${n}</td></tr>`).join('') +
+              `<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;">👤 ${who}</td>
+               <td style="padding:4px; text-align:right; font-weight:600;">${n}</td></tr>`).join('') +
           '</table>'
         : '<em style="color:#999;">Nenhum ticket no escopo/filtro atual.</em>';
 }
