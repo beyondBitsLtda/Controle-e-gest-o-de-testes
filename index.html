@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Plano de Testes</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.7.0/mammoth.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+
+    <div class="background-wallpaper">
+        <svg class="triangle-1" viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="0,0 100,0 0,100"></polygon></svg>
+        <svg class="triangle-2" viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="0,100 100,100 50,0"></polygon></svg>
+        <svg class="triangle-3" viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="100,0 100,100 0,100"></polygon></svg>
+    </div>
+
+    <!-- Banner aviso runs inativas -->
+    <div id="runs-expiry-banner" style="display:none; position:fixed; bottom:20px; right:20px; z-index:9999; max-width:360px; background:#fff3cd; border:1px solid #ffc107; border-left:4px solid #e6a800; border-radius:10px; padding:16px 18px; box-shadow:0 4px 16px rgba(0,0,0,0.12); font-size:0.88em; color:#5a4000;">
+        <div style="display:flex; align-items:flex-start; gap:10px;">
+            <span style="font-size:1.4em; line-height:1;">⚠️</span>
+            <div>
+                <strong style="display:block; margin-bottom:4px;">Atenção: Runs com prazo de expiração</strong>
+                Runs salvas no repositório são automaticamente apagadas após <strong>5 dias</strong> de inatividade.<br><br>
+                Mantenha backups locais das runs importantes usando o botão <strong>📥 Exportar Backup</strong>.
+                <div style="margin-top:10px; text-align:right;">
+                    <button onclick="document.getElementById('runs-expiry-banner').style.display='none'; localStorage.setItem('bannerDismissed', Date.now())" style="background:#e6a800; color:white; border:none; border-radius:6px; padding:5px 14px; cursor:pointer; font-size:0.9em; font-weight:600;">Entendido</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+       
+        <div class="header">
+             <img src="logo.png" alt="Logo da Empresa" class="header-logo">
+           
+            <div class="header-text">
+                
+                <h1>Controle de Plano de Testes</h1>
+                <p>Gerenciamento de Casos de Teste e Tickets</p>
+            </div>
+        </div>
+
+        <div class="content-wrapper">
+
+            <aside class="sidebar">
+                
+                
+                <hr class="sidebar-divider">
+                
+                <h3>Relatórios e Reports</h3>
+                <button id="manage-tickets-btn" class="btn" style="background-color: #3b6ff0;" onclick="showTicketManagementView()">🎫 Gerenciar Tickets</button>
+                <button class="btn btn-email" onclick="exportForEmail()">📧 Exportar Relatório</button>
+                <button class="btn btn-roadmap" onclick="generateTestRoadmap()">🗺️ Gerar Roadmap</button>
+                <button id="retrospective-btn" class="btn" style="background-color: #3b6ff0;">▶️ Iniciar Retrospectiva</button>
+                <button id="analytics-btn" class="btn" style="background-color: #3b6ff0;">🔬 Análise de Riscos</button>
+
+                <hr class="sidebar-divider">
+
+                <h3>Visualização e Configurações</h3>
+                <button id="view-toggle-btn" class="btn btn-import">    Planejamento      </button>
+                <button class="btn" style="background-color: #3b6ff0;" onclick="showControlPanel()">⚙️ Painel de Controle</button>
+
+                <hr class="sidebar-divider">
+
+                <h3>Backup</h3>
+                <button class="btn btn-import" onclick="exportCurrentStateToJSON()">📤 Exportar Backup</button>
+                <input type="file" id="import-projects-file" accept=".json" style="display: none;" onchange="importAndDisplayProject(event)">
+                <button class="btn btn-import" onclick="document.getElementById('import-projects-file').click()">📥 Importar Backup</button>
+
+                <hr class="sidebar-divider">
+
+                <h3>Backups do Repositório</h3>
+                <button class="btn" style="background-color: #3b6ff0;" onclick="openRepoBackupsModal()">☁️ Carregar Runs</button>
+                <button class="btn" style="background-color: #22a06b;" onclick="openPublishRepoModal()">📤 Salvar Run</button>
+            </aside>
+
+
+
+            <div class="main-content">
+                <div class="controls-section">
+                    <div class="csv-input-section">
+                        <h3>Importar Casos de Teste via CSV</h3>
+                        <p>Use um arquivo .csv para importar uma lista pronta de casos de teste.</p>
+                        
+                        <input type="file" id="csv-upload" accept=".csv" style="display: none;" onchange="handleCSVUpload(event)">
+                        <button class="btn btn-import" onclick="document.getElementById('csv-upload').click()">⬆️ Importar CSV</button>
+                    </div>
+
+                    <div class="filter-section">
+                        <label for="tag-filter">🏷️ Filtrar por Tag:</label>
+                        <select id="tag-filter" class="form-select" onchange="filterByTag()" style="width: 200px; padding: 10px;"></select>
+                    </div>
+                </div>
+
+                <div id="initial-view-container" style="display: none;">
+                    <h2>📂 Projetos Salvos</h2>
+                    <p>Selecione um projeto para carregar ou comece um novo adicionando um caso de teste.</p>
+                    <div id="initial-project-list" class="project-list-container">
+                        </div>
+                </div>
+                
+                <div id="test-case-container"></div>
+                
+                <div id="kanban-board-container" style="display: none;"></div>
+
+                <div id="ticket-management-container" style="display: none;">
+                    <div class="ticket-management-header">
+                        <h2>🎫 Gerenciamento de Tickets</h2>
+                        <p>Acompanhe, atribua e resolva os problemas gerados a partir dos casos de teste.</p>
+                        <button class="btn" style="background-color: #6c757d; margin-top: 10px;" onclick="showTestCaseView()">⬅️ Voltar para Casos de Teste</button>
+                    </div>
+                    <div class="ticket-filters">
+                        <select id="ticket-filter-status" class="form-select">
+                            <option value="">Todos os Status</option>
+                        </select>
+                        <select id="ticket-filter-priority" class="form-select">
+                            <option value="">Todas as Prioridades</option>
+                        </select>
+                        <input type="text" id="ticket-filter-assignee" class="form-input" placeholder="Filtrar por responsável...">
+                    </div>
+                    <div id="ticket-kanban-board" class="ticket-kanban-board">
+                        </div>
+                </div>
+
+
+                <div class="summary-section">
+                    <div class="summary-title">📊 Resumo Geral</div>
+                    <div class="summary-stats">
+                        <div class="stat-card"><div class="stat-number" id="total-cases">0</div><div class="stat-label">Total de Casos</div></div>
+                        <div class="stat-card"><div class="stat-number" id="total-approved">0</div><div class="stat-label">Aprovados</div></div>
+                        <div class="stat-card"><div class="stat-number" id="total-failed">0</div><div class="stat-label">Reprovados</div></div>
+                        <div class="stat-card"><div class="stat-number" id="total-invalid">0</div><div class="stat-label">Inválidos</div></div>
+                    </div>
+                </div>
+
+                <div class="console-log-section">
+                    <div class="console-log-header">
+                        <h2>📝 Logs do Console</h2>
+                        <button class="btn btn-clear-logs" onclick="clearCapturedLogs()">Limpar Logs</button>
+                    </div>
+                    <div id="log-output" class="log-output"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="fixed-action-buttons">
+            <button class="btn btn-action-discrete" onclick="openFilterModal()" title="Painel de Filtros" style="background-color: #3b6ff0;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: white;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+            </button>
+            <button class="btn btn-action-discrete btn-warning" id="filter-failed-button" onclick="filterFailedTests()" title="Mostrar Apenas Reprovados">⚠️</button>
+            <button class="btn btn-action-discrete btn-add" onclick="addNewTestCase()" title="Adicionar Novo Caso de Teste">➕</button>
+        </div>
+    </div>
+
+
+    <!-- Modal: Publicar Backup no Repositório -->
+    <div id="publish-repo-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'publish-repo-modal')">
+        <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 780px;">
+            <span class="modal-close" onclick="closeModal('publish-repo-modal')">&times;</span>
+            <h2>☁️ Publicar no Repositório</h2>
+            <p style="color: var(--cor-texto-claro, #6c757d); margin-bottom: 20px; font-size: 0.9em;">
+                Salva o backup atual na pasta <code>backups/</code> do repositório e atualiza o índice automaticamente.
+            </p>
+
+            <div class="form-group">
+                <label class="form-label">Nome do backup <span style="color:#CB0F10">*</span></label>
+                <input type="text" id="pub-name" class="form-input" placeholder="Ex: Sprint 22 - Regressão Completa">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Projeto</label>
+                <input type="text" id="pub-project" class="form-input" placeholder="Ex: Fluxo de Caixa, Sprint 22..." list="pub-project-list">
+                <datalist id="pub-project-list"></datalist>
+                <small style="color: #6c757d; display: block; margin-top: 4px;">Agrupa esta run dentro de um projeto na lista de backups.</small>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Arquivo (filename) <span style="color:#CB0F10">*</span></label>
+                <input type="text" id="pub-filename" class="form-input" placeholder="sprint-22-regressao.json">
+                <small style="color: #6c757d; display: block; margin-top: 4px;">Será salvo em <code>backups/</code>. Use apenas letras, números e hífens.</small>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Descrição</label>
+                <input type="text" id="pub-description" class="form-input" placeholder="Resumo do que foi testado nesta run">
+            </div>
+
+            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div>
+                    <label class="form-label">Autor</label>
+                    <input type="text" id="pub-author" class="form-input" placeholder="Nome do tester">
+                </div>
+                <div>
+                    <label class="form-label">Data</label>
+                    <input type="date" id="pub-date" class="form-input">
+                </div>
+            </div>
+
+            <hr style="margin: 20px 0; border-color: var(--cor-cinza-fundo, #e9ecef);">
+            <p style="font-size: 0.85em; color: #6c757d; margin-bottom: 12px;">
+                🔑 <strong>Configuração do GitLab</strong> — necessária apenas uma vez.
+                <button onclick="toggleGitlabConfig()" style="background:none;border:none;color:#3b6ff0;cursor:pointer;font-size:0.85em;text-decoration:underline;padding:0 4px;">
+                    configurar / editar
+                </button>
+            </p>
+
+            <div id="gitlab-config-section" style="display:none;">
+                <div class="form-group">
+                    <label class="form-label">GitLab Project ID <span style="color:#CB0F10">*</span></label>
+                    <input type="text" id="pub-project-id" class="form-input" placeholder="12345678">
+                    <small style="color: #6c757d; display: block; margin-top: 4px;">Encontre em: Repositório → Settings → General → Project ID</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Branch</label>
+                    <input type="text" id="pub-branch" class="form-input" placeholder="main" value="main">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Personal Access Token (PAT) <span style="color:#CB0F10">*</span></label>
+                    <input type="password" id="pub-token" class="form-input" placeholder="glpat-xxxxxxxxxxxxxxxxxxxx">
+                    <small style="color: #6c757d; display: block; margin-top: 4px;">Salvo apenas neste navegador (localStorage). Precisa de escopo <code>api</code>.</small>
+                </div>
+                <button class="btn" style="background:#6c757d; font-size:0.85em; padding: 8px 16px; margin-bottom: 8px;" onclick="saveGitlabConfig()">💾 Salvar configuração</button>
+            </div>
+
+            <div id="pub-status" style="display:none; padding: 10px 14px; border-radius: 8px; font-size: 0.9em; margin-top: 8px;"></div>
+
+            <div class="modal-actions" style="margin-top: 20px;">
+                <button class="btn" style="background:#6c757d;" onclick="closeModal('publish-repo-modal')">Cancelar</button>
+                <button class="btn" style="background:#3b6ff0;" id="pub-submit-btn" onclick="publishToRepo()">☁️ Publicar no Repositório</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal: Backups do Repositório -->
+    <div id="repo-backups-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'repo-backups-modal')">
+        <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 780px;">
+            <span class="modal-close" onclick="closeModal('repo-backups-modal')">&times;</span>
+            <h2>☁️ Backups do Repositório</h2>
+
+            <div class="backups-tabs">
+                <button class="backup-tab active" id="tab-projects" onclick="switchBackupTab('projects')">📁 Por Projeto</button>
+                <button class="backup-tab" id="tab-all" onclick="switchBackupTab('all')">📋 Todos</button>
+            </div>
+
+            <!-- Visão: Por Projeto -->
+            <div id="backups-view-projects" style="max-height: 520px; overflow-y: auto;">
+                <div id="repo-projects-list" style="display: flex; flex-direction: column; gap: 0;"></div>
+            </div>
+
+            <!-- Visão: Todos -->
+            <div id="backups-view-all" style="display:none; max-height: 520px; overflow-y: auto;">
+                <div id="repo-backups-list" style="display: flex; flex-direction: column; gap: 0; padding-right: 4px;">
+                    <div id="repo-backups-loading" style="text-align: center; padding: 30px; color: #6c757d;">
+                        <span style="font-size: 1.5em;">⏳</span><br>Carregando lista de backups...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="email-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'email-modal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal('email-modal')">&times;</span>
+            <h2>📧 Exportar Relatório</h2>
+            <p>Um relatório de texto simples será copiado para sua área de transferência.</p>
+            <p id="email-copy-feedback" style="font-weight: bold; margin-top: 10px;"></p>
+            <div class="modal-actions">
+                <a id="email-link" href="#" class="btn btn-email">Abrir Cliente de Email</a>
+                <button id="download-json-button" class="btn btn-import">Baixar Backup do Projeto</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="media-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'media-modal')">
+        <div class="modal-content media-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal('media-modal')">&times;</span>
+            <div id="media-modal-player"></div>
+        </div>
+    </div>
+
+   
+    <div id="save-run-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'save-run-modal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal('save-run-modal')">&times;</span>
+            <h2>💾 Salvar Execução de Teste</h2>
+            <div class="form-group">
+                <label for="macro-project-select" class="form-label">Selecione o Macro-Projeto:</label>
+                <select id="macro-project-select" class="form-select"></select>
+            </div>
+            <div class="form-group">
+                <label for="run-name-input" class="form-label">Nome da Execução:</label>
+                <input type="text" id="run-name-input" class="form-input" placeholder="Ex: Teste de Regressão Sprint 15">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-add" onclick="executeSaveRun()">Salvar Execução</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="load-run-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'load-run-modal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal('load-run-modal')">&times;</span>
+            <h2 id="load-run-modal-title">📂 Carregar Execução</h2>
+            <div id="run-list-container" class="project-list-container"></div>
+             <div class="modal-actions">
+                <button class="btn btn-history" onclick="showLoadMacroProjectSelectionModal()">⬅️ Voltar para Macro-Projetos</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="project-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'project-modal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal('project-modal')">&times;</span>
+            <h2>📂 Selecione um Macro-Projeto</h2>
+            <div id="project-list-container" class="project-list-container"></div>
+        </div>
+    </div>
+
+    <div id="video-commenter-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'video-commenter-modal')">
+        <div class="modal-content" id="video-commenter-content" onclick="event.stopPropagation()">
+             <span class="modal-close" onclick="closeModal('video-commenter-modal')">&times;</span>
+            <div class="video-commenter-wrapper">
+                <div id="video-main-container" class="video-commenter-main">
+                    <video id="video-commenter-player" controls></video>
+                    <canvas id="video-drawing-canvas"></canvas>
+                </div>
+                <div class="video-commenter-sidebar">
+                    <div class="commenter-header">
+                        <h2 id="commenter-title" class="commenter-title">Título do Teste</h2>
+                        <p id="commenter-author-date" class="commenter-author-date">Criado em...</p>
+                        <div id="video-drawing-tools" class="video-drawing-tools">
+                            <button id="pencil-tool-btn" class="btn-tool active" title="Ativar Desenho">✏️</button>
+                            <div id="color-palette-video" class="color-palette"></div>
+                            <button id="clear-canvas-btn" class="btn-tool" title="Limpar Desenhos">🗑️</button>
+                            <button id="add-postit-btn" class="btn-add-postit" title="Adicionar Post-it">📌</button>
+                        </div>
+                    </div>
+                    <ol id="comment-steps-list"></ol>
+                    <div id="comment-reply-section">
+                        <textarea id="new-comment-textarea" placeholder="Adicione um novo passo ou comentário..."></textarea>
+                        <button id="add-comment-btn" class="btn">Comentar no tempo atual</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="recording-preview-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'recording-preview-modal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="discardRecording()">&times;</span>
+            <h2>📼 Pré-visualização da Gravação</h2>
+            <video id="recording-preview-player" controls style="width: 100%; border-radius: 8px; margin-top: 15px;"></video>
+            <div class="modal-actions">
+                <button class="btn btn-remove" onclick="discardRecording()">Descartar</button>
+                <button class="btn btn-add" onclick="attachRecording()">Anexar Gravação</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="roadmap-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'roadmap-modal')">
+        <div class="modal-content roadmap-modal-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal('roadmap-modal')">&times;</span>
+            <div class="roadmap-output">
+                <div class="roadmap-container">
+                    <h2>🗺️ Roadmap do Plano de Testes</h2>
+                    <p>Visão geral do progresso e resultados do ciclo de testes atual.</p>
+                    <div id="roadmap-ai-summary" class="roadmap-highlight-section" style="display: none; text-align: left;"></div>
+                    <div class="roadmap-charts">
+                        <div class="chart-container">
+                            <h3>Resultados Gerais</h3>
+                            <canvas id="resultsChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <h3>Tipos de Falha (Reprovados)</h3>
+                            <canvas id="failureTypesChart"></canvas>
+                        </div>
+                    </div>
+                    <div id="roadmap-highlight-section" class="roadmap-highlight-section" style="display: none;">
+                        <h3>🔄 Ponto de Atenção: Re-testes</h3>
+                        <p>O caso <strong class="highlight-id"></strong> (<em class="highlight-item"></em>) foi o que mais precisou de re-testes, com um total de <strong class="highlight-count"></strong> execuções.</p>
+                    </div>
+                    <div id="roadmap-textual-details" class="roadmap-details"></div>
+                </div>
+            </div>
+             <div class="modal-actions">
+                <button class="btn btn-email" onclick="copyRoadmapText()">Copiar Texto</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="log-attach-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'log-attach-modal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal('log-attach-modal')">&times;</span>
+            <h2>📝 Anexar Log do Console</h2>
+            <p>Cole o log copiado do console de desenvolvedor (F12) na área abaixo.</p>
+            <textarea id="log-attach-textarea" placeholder="Cole o texto do log aqui..."></textarea>
+            <div class="modal-actions">
+                <button class="btn btn-add" onclick="attachPastedLogs()">Anexar Log</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="flowchart-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'flowchart-modal')">
+        <div class="modal-content flowchart-editor-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal('flowchart-modal')">&times;</span>
+            <h2>Criar Fluxograma Manualmente</h2>
+            <div class="flowchart-editor-container">
+                <div class="flowchart-step"><label>Código Mermaid (editável):</label><textarea id="flowchart-code" oninput="renderFlowchartPreview()"></textarea></div>
+                <div class="flowchart-step"><label>Pré-visualização:</label><div id="flowchart-preview" class="mermaid"></div></div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-remove" onclick="closeModal('flowchart-modal')">Cancelar</button>
+                <button class="btn btn-add" onclick="attachFlowchart()">📎 Anexar como Evidência</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="flowchart-viewer-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'flowchart-viewer-modal')">
+        <div class="modal-content flowchart-viewer-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal('flowchart-viewer-modal')">&times;</span>
+            <h2>🗺️ Visualizador de Fluxograma</h2>
+            <div id="flowchart-viewer-output" class="mermaid"></div>
+        </div>
+    </div>
+
+    <div id="kanban-modal" class="modal-overlay">
+        <div class="modal-content kanban-modal-content">
+            <span class="modal-close" onclick="toggleView()">&times;</span>
+            <h2>Quadro de Acompanhamento</h2>
+            <div id="kanban-modal-board" class="kanban-board-container-fullscreen"></div>
+        </div>
+    </div>
+
+    <div id="control-panel-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'control-panel-modal')">
+        <div class="modal-content control-panel-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal('control-panel-modal')">&times;</span>
+            <h2 id="ai-correction-title">⚙️ Painel de Controle do Tester</h2>
+            <div class="panel-sections-wrapper">
+                <div class="panel-section profile-section">
+                    <h3>Meu Perfil</h3>
+                    <div class="profile-details">
+                        <img id="control-panel-img" src="profile_default.png" alt="Foto de Perfil" class="profile-picture" onclick="document.getElementById('profile-pic-upload').click()">
+                        <input type="file" id="profile-pic-upload" accept="image/*" style="display: none;" onchange="handleProfilePictureUpload(event)">
+                        <div class="profile-info">
+                            <label for="control-panel-name">Nome de Tester:</label>
+                            <input type="text" id="control-panel-name" class="form-input">
+                            <small>Este nome será usado em seus comentários.</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel-section stats-section">
+                    <h3>Minhas Estatísticas (Projeto Atual)</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-value" id="cp-total-tests">0</span>
+                            <span class="stat-title">Total</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="cp-approved-tests">0</span>
+                            <span class="stat-title">Aprovados</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="cp-failed-tests">0</span>
+                            <span class="stat-title">Reprovados</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-section settings-section">
+                <h3>Configurações de Aparência</h3>
+                <div class="setting-toggle">
+                    <label for="toggle-dark-mode">Ativar Modo Noturno</label>
+                    <label class="switch"><input type="checkbox" id="toggle-dark-mode"><span class="slider round"></span></label>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-add" onclick="saveUserSettings()">Salvar e Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="filter-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'filter-modal')">
+        <div class="modal-content filter-modal-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal('filter-modal')">&times;</span>
+            <h2>Painel de Filtros Avançados</h2>
+            <p>Selecione um ou mais critérios. Os casos de teste exibidos precisarão atender a TODAS as categorias selecionadas.</p>
+            <div class="filter-grid">
+                <div class="filter-group">
+                    <h3>Status do Fluxo</h3>
+                    <div id="filter-group-status" class="filter-options"></div>
+                </div>
+                <div class="filter-group">
+                    <h3>Tipo de Teste</h3>
+                    <div id="filter-group-test-type" class="filter-options"></div>
+                </div>
+                <div class="filter-group">
+                    <h3>Tipo de Falha</h3>
+                    <div id="filter-group-failure-type" class="filter-options"></div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-remove" onclick="clearFilters()">Limpar Filtros</button>
+                <button class="btn btn-add" onclick="applyFilters()">Aplicar Filtros</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="history-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'history-modal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal('history-modal')">&times;</span>
+            <h2>📜 Histórico de Status</h2>
+            <p id="history-modal-title" style="text-align: center; font-weight: bold; margin-bottom: 20px;"></p>
+            <div id="history-modal-content" class="history-list-container">
+                </div>
+        </div>
+    </div>
+
+    <div id="ticket-details-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'ticket-details-modal')">
+        <div class="modal-content" id="ticket-details-content" onclick="event.stopPropagation()">
+             <span class="modal-close" onclick="closeModal('ticket-details-modal')">&times;</span>
+             <div id="ticket-details-body">
+                </div>
+        </div>
+    </div>
+
+    <div id="kanban-card-details-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'kanban-card-details-modal')">
+        <div class="modal-content card-details-modal-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal('kanban-card-details-modal')">&times;</span>
+            <div id="card-details-modal-body">
+            </div>
+        </div>
+    </div>
+
+    <div id="retrospective-modal" class="modal-overlay">
+        <div class="modal-content retrospective-modal-content">
+            <span class="modal-close" onclick="closeModal('retrospective-modal')">&times;</span>
+            <h2>Retrospectiva Animada dos Testes</h2>
+            <div id="retrospective-container" class="retrospective-container">
+                <div id="retrospective-timeline-lanes">
+                </div>
+            </div>
+            <div id="retrospective-details-panel" class="retrospective-details-panel">
+                Passe o mouse sobre um evento para ver os detalhes ou clique em ▶️ para iniciar.
+            </div>
+            <div id="retrospective-controls" class="retrospective-controls">
+                <button id="retrospective-play-pause-btn" class="btn">▶️</button>
+                <span id="retrospective-timer" class="retrospective-timer">00:00 / 00:00</span>
+                <input type="range" id="retrospective-scrubber" min="0" max="1000" value="0" class="retrospective-scrubber">
+                <label for="retrospective-speed-control" class="retrospective-speed-label">Velocidade:</label>
+                <select id="retrospective-speed-control" class="form-select" style="width: auto;">
+                    <option value="0.5">0.5x</option>
+                    <option value="1" selected>1x</option>
+                    <option value="2">2x</option>
+                    <option value="5">5x</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div id="analytics-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'analytics-modal')">
+        <div class="modal-content analytics-modal-content">
+            <span class="modal-close" onclick="closeModal('analytics-modal')">&times;</span>
+            <h2>Painel de Análise de Riscos</h2>
+            <p class="analytics-subtitle">Insights automáticos baseados nos dados atuais do projeto.</p>
+            <div id="analytics-dashboard" class="analytics-dashboard">
+                </div>
+        </div>
+    </div>
+    <script src="js/01-core-state.js"></script>
+    <script src="js/02-app-init.js"></script>
+    <script src="js/03-test-cases.js"></script>
+    <script src="js/04-recording-evidences.js"></script>
+    <script src="js/05-storage-projects.js"></script>
+    <script src="js/06-tickets.js"></script>
+    <script src="js/07-roadmap-kanban.js"></script>
+    <script src="js/08-filters-history-modals.js"></script>
+    <script src="js/09-retrospective-analytics.js"></script>
+    <script src="js/10-export-backup-gitlab.js"></script>
+    <script src="js/11-supabase-sync.js"></script>
+    <script src="export-teams.js"></script>
+</body>
+</html>

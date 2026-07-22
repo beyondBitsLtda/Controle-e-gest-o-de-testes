@@ -1,0 +1,634 @@
+{
+  "testCaseData": {
+    "test-case-1": {
+      "id": 1,
+      "displayId": "1",
+      "parentId": null,
+      "isReTest": false,
+      "reTestCount": 0,
+      "itemTestado": "[3.1] Observações persistem entre etapas do funil (Lead → Ligação → Agendamento)",
+      "condicaoAprovacao": "O texto digitado no campo 'Observações' em qualquer etapa deve aparecer IGUAL em todas as outras etapas (Lead, Ligação, Agendamento). Antes da correção, cada etapa tinha campo isolado.",
+      "descricao": "1. Faça login como qualquer especialista. 2. Vá na aba 'Funil de Vendas' (menu lateral). 3. Clique em 'Novo Lead', preencha nome e telefone, e SALVE. 4. Abra o lead recém-criado clicando nele. 5. Você verá várias abas no topo do modal: Lead, Ligação, Agendamento, Visita, Venda, Carteira. 6. Na aba 'Lead', procure o campo 'Observações' e digite o texto exato: 'Cliente quer reunião na quinta'. Clique em SALVAR. 7. Feche o modal e abra o lead novamente. 8. Clique na aba 'Ligação' (sem registrar nova ligação) — o campo Observações deve mostrar o MESMO texto digitado. 9. Clique na aba 'Agendamento' — o texto também deve continuar lá.",
+      "tipoTeste": "Sistema",
+      "resultado": "Selecione um resultado",
+      "tipoFalha": "N/A",
+      "resolutionStatus": "Selecione um status",
+      "evidences": [],
+      "devComments": [],
+      "priority": "Alta",
+      "tags": [],
+      "executionHistory": [
+        {
+          "timestamp": "2026-06-27T00:18:38.000Z",
+          "oldResult": "Criado",
+          "newResult": "Selecione um resultado",
+          "author": "Anônimo"
+        }
+      ],
+      "tickets": [],
+      "dataEntrega": "",
+      "responsavel": "",
+      "prioridadePlanejamento": "N/A",
+      "peso": "N/A"
+    },
+    "test-case-2": {
+      "id": 2,
+      "displayId": "2",
+      "parentId": null,
+      "isReTest": false,
+      "reTestCount": 0,
+      "itemTestado": "[3.1] Observações persistem entre etapas (Visita, Venda, Carteira)",
+      "condicaoAprovacao": "A edição no campo Observações em qualquer aba deve refletir automaticamente nas demais. O campo é único e compartilhado.",
+      "descricao": "1. Pré-requisito: tenha um lead que já chegou na etapa de 'Carteira' (já fechou venda). 2. Abra esse lead. Na aba 'Visita', digite no campo 'Observações': 'Mudou de endereço — confirmar antes de visitar'. Salve. 3. Vá na aba 'Venda' — o mesmo texto deve aparecer. 4. Vá na aba 'Carteira' — o mesmo texto deve aparecer. 5. Edite o texto na aba 'Carteira' adicionando ' (atualizado)'. Salve. 6. Volte na aba 'Visita' — o texto novo deve refletir a edição.",
+      "tipoTeste": "Sistema",
+      "resultado": "Selecione um resultado",
+      "tipoFalha": "N/A",
+      "resolutionStatus": "Selecione um status",
+      "evidences": [],
+      "devComments": [],
+      "priority": "Alta",
+      "tags": [],
+      "executionHistory": [
+        {
+          "timestamp": "2026-06-27T00:18:38.000Z",
+          "oldResult": "Criado",
+          "newResult": "Selecione um resultado",
+          "author": "Anônimo"
+        }
+      ],
+      "tickets": [],
+      "dataEntrega": "",
+      "responsavel": "",
+      "prioridadePlanejamento": "N/A",
+      "peso": "N/A"
+    },
+    "test-case-3": {
+      "id": 3,
+      "displayId": "3",
+      "parentId": null,
+      "isReTest": false,
+      "reTestCount": 0,
+      "itemTestado": "[3.1] Observações persistem após F5 e relogin",
+      "condicaoAprovacao": "As observações devem ficar salvas no banco e continuar aparecendo após atualizar a página ou trocar de sessão.",
+      "descricao": "1. Em um lead qualquer, digite na aba 'Lead' > 'Observações' um texto único como: 'TESTE-PERSISTENCIA-001'. Salve. 2. Aperte F5 no teclado para atualizar a página. 3. Abra o mesmo lead — o texto deve continuar lá. 4. Faça logout, faça login novamente e abra o mesmo lead — o texto deve continuar.",
+      "tipoTeste": "Sistema",
+      "resultado": "Selecione um resultado",
+      "tipoFalha": "N/A",
+      "resolutionStatus": "Selecione um status",
+      "evidences": [],
+      "devComments": [],
+      "priority": "Média",
+      "tags": [],
+      "executionHistory": [
+        {
+          "timestamp": "2026-06-27T00:18:38.000Z",
+          "oldResult": "Criado",
+          "newResult": "Selecione um resultado",
+          "author": "Anônimo"
+        }
+      ],
+      "tickets": [],
+      "dataEntrega": "",
+      "responsavel": "",
+      "prioridadePlanejamento": "N/A",
+      "peso": "N/A"
+    },
+    "test-case-4": {
+      "id": 4,
+      "displayId": "4",
+      "parentId": null,
+      "isReTest": false,
+      "reTestCount": 0,
+      "itemTestado": "[3.2] Login sempre obrigatório (sem auto-login do navegador)",
+      "condicaoAprovacao": "Mesmo que o Chrome lembre a senha, o sistema sempre exige que o usuário passe pela tela de login e clique em 'Entrar'. Não pode haver auto-login automático.",
+      "descricao": "1. Faça login normalmente no sistema com email e senha. Marque a opção 'Salvar senha' do Chrome se ele perguntar. 2. Use o sistema normalmente por alguns minutos. 3. FECHE COMPLETAMENTE a aba do navegador (ou o navegador inteiro). 4. Abra novamente o link do sistema. 5. O sistema DEVE mostrar a tela de login novamente, mesmo que o Chrome auto-preencha email/senha. 6. O usuário precisa clicar manualmente no botão 'Entrar' para conseguir acesso.",
+      "tipoTeste": "Sistema",
+      "resultado": "Selecione um resultado",
+      "tipoFalha": "N/A",
+      "resolutionStatus": "Selecione um status",
+      "evidences": [],
+      "devComments": [],
+      "priority": "Alta",
+      "tags": [],
+      "executionHistory": [
+        {
+          "timestamp": "2026-06-27T00:18:38.000Z",
+          "oldResult": "Criado",
+          "newResult": "Selecione um resultado",
+          "author": "Anônimo"
+        }
+      ],
+      "tickets": [],
+      "dataEntrega": "",
+      "responsavel": "",
+      "prioridadePlanejamento": "N/A",
+      "peso": "N/A"
+    },
+    "test-case-5": {
+      "id": 5,
+      "displayId": "5",
+      "parentId": null,
+      "isReTest": false,
+      "reTestCount": 0,
+      "itemTestado": "[3.2] Cada aba do navegador tem sessão separada",
+      "condicaoAprovacao": "Cada aba do navegador deve ter sua própria sessão. Abrir nova aba não deve compartilhar login automaticamente.",
+      "descricao": "1. Abra uma aba no Chrome e faça login com o usuário A. 2. ABRA UMA NOVA ABA no mesmo Chrome. 3. Acesse o sistema na nova aba — deve aparecer a tela de login (não pode entrar automático com o usuário A). 4. Faça login com o usuário B nessa nova aba. 5. Volte para a primeira aba — deve continuar com o usuário A logado.",
+      "tipoTeste": "Sistema",
+      "resultado": "Selecione um resultado",
+      "tipoFalha": "N/A",
+      "resolutionStatus": "Selecione um status",
+      "evidences": [],
+      "devComments": [],
+      "priority": "Média",
+      "tags": [],
+      "executionHistory": [
+        {
+          "timestamp": "2026-06-27T00:18:38.000Z",
+          "oldResult": "Criado",
+          "newResult": "Selecione um resultado",
+          "author": "Anônimo"
+        }
+      ],
+      "tickets": [],
+      "dataEntrega": "",
+      "responsavel": "",
+      "prioridadePlanejamento": "N/A",
+      "peso": "N/A"
+    },
+    "test-case-6": {
+      "id": 6,
+      "displayId": "6",
+      "parentId": null,
+      "isReTest": false,
+      "reTestCount": 0,
+      "itemTestado": "[3.3] Código do lead com 5 dígitos (AMP-2026-XXXXX)",
+      "condicaoAprovacao": "Todo código de lead deve ter o formato 'AMP-2026-XXXXX' com exatamente 5 dígitos numéricos no final. Antes era 4 dígitos.",
+      "descricao": "1. Vá na aba 'Funil de Vendas'. 2. Clique em 'Novo Lead' e cadastre um lead novo. 3. Após salvar, abra o lead e procure o ID do lead — geralmente fica no topo do modal ou no card do kanban. 4. Confira o formato: deve ser 'AMP-2026-XXXXX' (com 5 dígitos no final), por exemplo: 'AMP-2026-00001', 'AMP-2026-00042', 'AMP-2026-01337'. 5. Confira também leads ANTIGOS que já estavam no sistema — devem aparecer com 5 dígitos também (preenchidos com zero à esquerda).",
+      "tipoTeste": "Sistema",
+      "resultado": "Selecione um resultado",
+      "tipoFalha": "N/A",
+      "resolutionStatus": "Selecione um status",
+      "evidences": [],
+      "devComments": [],
+      "priority": "Alta",
+      "tags": [],
+      "executionHistory": [
+        {
+          "timestamp": "2026-06-27T00:18:38.000Z",
+          "oldResult": "Criado",
+          "newResult": "Selecione um resultado",
+          "author": "Anônimo"
+        }
+      ],
+      "tickets": [],
+      "dataEntrega": "",
+      "responsavel": "",
+      "prioridadePlanejamento": "N/A",
+      "peso": "N/A"
+    },
+    "test-case-7": {
+      "id": 7,
+      "displayId": "7",
+      "parentId": null,
+      "isReTest": false,
+      "reTestCount": 0,
+      "itemTestado": "[3.4] Botão 'mostrar senha' (olhinho) no cadastro de usuário",
+      "condicaoAprovacao": "O modal de cadastro/edição de usuário deve ter um ícone de olho ao lado do campo Senha que alterna entre mostrar e ocultar o conteúdo digitado.",
+      "descricao": "1. Faça login como gerente (perfil que tem acesso a Configurações). 2. Vá em 'Configurações' > 'Usuários'. 3. Clique em 'Novo Usuário' (ou edite um existente). 4. No modal de cadastro/edição, localize o campo 'Senha'. 5. Ao lado direito do campo deve ter um pequeno ícone de OLHO (👁). 6. Digite uma senha qualquer — os caracteres aparecem como bolinhas/asteriscos. 7. Clique no ícone de olho — a senha deve ficar visível em texto puro. 8. Clique no ícone novamente — a senha deve voltar a ficar oculta (bolinhas).",
+      "tipoTeste": "Sistema",
+      "resultado": "Selecione um resultado",
+      "tipoFalha": "N/A",
+      "resolutionStatus": "Selecione um status",
+      "evidences": [],
+      "devComments": [],
+      "priority": "Média",
+      "tags": [],
+      "executionHistory": [
+        {
+          "timestamp": "2026-06-27T00:18:38.000Z",
+          "oldResult": "Criado",
+          "newResult": "Selecione um resultado",
+          "author": "Anônimo"
+        }
+      ],
+      "tickets": [],
+      "dataEntrega": "",
+      "responsavel": "",
+      "prioridadePlanejamento": "N/A",
+      "peso": "N/A"
+    },
+    "test-case-8": {
+      "id": 8,
+      "displayId": "8",
+      "parentId": null,
+      "isReTest": false,
+      "reTestCount": 0,
+      "itemTestado": "[3.5] Menu lateral mostra 'Histórico' (não mais 'Histórico de Ligações')",
+      "condicaoAprovacao": "O item do menu lateral foi renomeado de 'Histórico de Ligações' para apenas 'Histórico', já que a tela mostra eventos de todas as etapas.",
+      "descricao": "1. Faça login no sistema. 2. Olhe o menu lateral (a barra esquerda com os ícones e nomes das páginas). 3. Procure o item de histórico. O texto deve ser apenas 'Histórico' (sem o complemento 'de Ligações'). 4. Clique nele e confira que a página abre normalmente e mostra registros de TODOS os tipos: ligações, agendamentos, visitas, vendas, carteira.",
+      "tipoTeste": "Sistema",
+      "resultado": "Selecione um resultado",
+      "tipoFalha": "N/A",
+      "resolutionStatus": "Selecione um status",
+      "evidences": [],
+      "devComments": [],
+      "priority": "Baixa",
+      "tags": [],
+      "executionHistory": [
+        {
+          "timestamp": "2026-06-27T00:18:38.000Z",
+          "oldResult": "Criado",
+          "newResult": "Selecione um resultado",
+          "author": "Anônimo"
+        }
+      ],
+      "tickets": [],
+      "dataEntrega": "",
+      "responsavel": "",
+      "prioridadePlanejamento": "N/A",
+      "peso": "N/A"
+    },
+    "test-case-9": {
+      "id": 9,
+      "displayId": "9",
+      "parentId": null,
+      "isReTest": false,
+      "reTestCount": 0,
+      "itemTestado": "[3.6] Iniciais do criador aparecem no card do Kanban",
+      "condicaoAprovacao": "Cada card do kanban deve ter no canto inferior direito um balão com as iniciais do especialista que criou o lead (ex: 'LM', 'MB').",
+      "descricao": "1. Faça login como um especialista (ex: Lucas Marques). 2. Vá em 'Funil de Vendas' (kanban). 3. Clique em 'Novo Lead', preencha e salve. 4. Procure o card recém-criado no kanban. 5. No canto inferior direito do card deve ter um pequeno balão/círculo com as INICIAIS do especialista que criou — no exemplo, 'LM'. 6. Cadastre mais um lead com outro especialista logado (ex: Maria Bezerra → balão deve mostrar 'MB'). 7. As iniciais devem ser do PRIMEIRO e ÚLTIMO nome do especialista.",
+      "tipoTeste": "Sistema",
+      "resultado": "Selecione um resultado",
+      "tipoFalha": "N/A",
+      "resolutionStatus": "Selecione um status",
+      "evidences": [],
+      "devComments": [],
+      "priority": "Média",
+      "tags": [],
+      "executionHistory": [
+        {
+          "timestamp": "2026-06-27T00:18:38.000Z",
+          "oldResult": "Criado",
+          "newResult": "Selecione um resultado",
+          "author": "Anônimo"
+        }
+      ],
+      "tickets": [],
+      "dataEntrega": "",
+      "responsavel": "",
+      "prioridadePlanejamento": "N/A",
+      "peso": "N/A"
+    },
+    "test-case-10": {
+      "id": 10,
+      "displayId": "10",
+      "parentId": null,
+      "isReTest": false,
+      "reTestCount": 0,
+      "itemTestado": "[3.6] Iniciais não mudam quando lead é transferido",
+      "condicaoAprovacao": "As iniciais no canto do card representam o CRIADOR original do lead e não devem mudar quando o lead é transferido para outro especialista.",
+      "descricao": "1. Crie um lead com o usuário A (iniciais 'AA'). Anote as iniciais que aparecem no card. 2. Faça login como gerente ou supervisor. 3. Use a função 'Transferir' (clicar no card → botão Transferir) e transfira o lead para o usuário B (iniciais 'BB'). 4. Volte ao kanban e olhe o card — as iniciais devem CONTINUAR sendo as do criador original (AA), não as do novo dono. 5. Isso preserva o histórico de quem captou o lead.",
+      "tipoTeste": "Sistema",
+      "resultado": "Selecione um resultado",
+      "tipoFalha": "N/A",
+      "resolutionStatus": "Selecione um status",
+      "evidences": [],
+      "devComments": [],
+      "priority": "Baixa",
+      "tags": [],
+      "executionHistory": [
+        {
+          "timestamp": "2026-06-27T00:18:38.000Z",
+          "oldResult": "Criado",
+          "newResult": "Selecione um resultado",
+          "author": "Anônimo"
+        }
+      ],
+      "tickets": [],
+      "dataEntrega": "",
+      "responsavel": "",
+      "prioridadePlanejamento": "N/A",
+      "peso": "N/A"
+    },
+    "test-case-11": {
+      "id": 11,
+      "displayId": "11",
+      "parentId": null,
+      "isReTest": false,
+      "reTestCount": 0,
+      "itemTestado": "[3.7] Botão 'Transferir' aparece para Supervisor",
+      "condicaoAprovacao": "Supervisor deve ver o botão 'Transferir' no modal de detalhes do lead. Antes da correção, só Gerente tinha acesso.",
+      "descricao": "1. Faça login como SUPERVISOR. 2. Vá no Funil de Vendas. 3. Abra qualquer lead que esteja na sua visão (clique no card). 4. Dentro do modal do lead, procure o botão 'Transferir' (geralmente perto do topo, ou em algum menu de ações). 5. O botão DEVE estar visível e clicável.",
+      "tipoTeste": "Sistema",
+      "resultado": "Selecione um resultado",
+      "tipoFalha": "N/A",
+      "resolutionStatus": "Selecione um status",
+      "evidences": [],
+      "devComments": [],
+      "priority": "Alta",
+      "tags": [],
+      "executionHistory": [
+        {
+          "timestamp": "2026-06-27T00:18:38.000Z",
+          "oldResult": "Criado",
+          "newResult": "Selecione um resultado",
+          "author": "Anônimo"
+        }
+      ],
+      "tickets": [],
+      "dataEntrega": "",
+      "responsavel": "",
+      "prioridadePlanejamento": "N/A",
+      "peso": "N/A"
+    },
+    "test-case-12": {
+      "id": 12,
+      "displayId": "12",
+      "parentId": null,
+      "isReTest": false,
+      "reTestCount": 0,
+      "itemTestado": "[3.7] Supervisor consegue transferir lead com sucesso",
+      "condicaoAprovacao": "Supervisor deve conseguir efetivamente transferir um lead para outro especialista. A mudança deve persistir no banco e refletir corretamente para todos os perfis.",
+      "descricao": "1. Faça login como supervisor com acesso a pelo menos 2 especialistas. 2. Abra um lead de um dos especialistas da sua equipe. 3. Clique em 'Transferir'. Deve abrir um modal/seletor com a lista dos especialistas disponíveis. 4. Escolha um especialista diferente do dono atual e confirme. 5. O sistema deve mostrar mensagem de sucesso (toast verde). 6. Recarregue a página (F5) e abra o lead novamente — o dono do lead deve ter mudado para o novo especialista. 7. O lead deve aparecer agora na visão do novo especialista quando ele logar.",
+      "tipoTeste": "Sistema",
+      "resultado": "Selecione um resultado",
+      "tipoFalha": "N/A",
+      "resolutionStatus": "Selecione um status",
+      "evidences": [],
+      "devComments": [],
+      "priority": "Alta",
+      "tags": [],
+      "executionHistory": [
+        {
+          "timestamp": "2026-06-27T00:18:38.000Z",
+          "oldResult": "Criado",
+          "newResult": "Selecione um resultado",
+          "author": "Anônimo"
+        }
+      ],
+      "tickets": [],
+      "dataEntrega": "",
+      "responsavel": "",
+      "prioridadePlanejamento": "N/A",
+      "peso": "N/A"
+    },
+    "test-case-13": {
+      "id": 13,
+      "displayId": "13",
+      "parentId": null,
+      "isReTest": false,
+      "reTestCount": 0,
+      "itemTestado": "[3.7] Especialista NÃO vê botão 'Transferir'",
+      "condicaoAprovacao": "Especialista não deve ter acesso ao botão de transferência. Apenas Supervisor e Gerente veem essa opção.",
+      "descricao": "1. Faça login como ESPECIALISTA (qualquer um). 2. Abra qualquer lead da sua visão. 3. O botão 'Transferir' NÃO deve aparecer no modal. 4. Especialista não tem permissão para transferir leads — apenas Supervisor e Gerente.",
+      "tipoTeste": "Sistema",
+      "resultado": "Selecione um resultado",
+      "tipoFalha": "N/A",
+      "resolutionStatus": "Selecione um status",
+      "evidences": [],
+      "devComments": [],
+      "priority": "Média",
+      "tags": [],
+      "executionHistory": [
+        {
+          "timestamp": "2026-06-27T00:18:38.000Z",
+          "oldResult": "Criado",
+          "newResult": "Selecione um resultado",
+          "author": "Anônimo"
+        }
+      ],
+      "tickets": [],
+      "dataEntrega": "",
+      "responsavel": "",
+      "prioridadePlanejamento": "N/A",
+      "peso": "N/A"
+    },
+    "test-case-14": {
+      "id": 14,
+      "displayId": "14",
+      "parentId": null,
+      "isReTest": false,
+      "reTestCount": 0,
+      "itemTestado": "[3.8] UX do campo Slug no cadastro de tags está clara",
+      "condicaoAprovacao": "O cadastro de tags deve estar suficientemente claro para um usuário leigo conseguir criar uma tag com emoji sem se confundir com o campo Slug — seja por orientação visual ou por o campo ter sido removido.",
+      "descricao": "1. Faça login como gerente. 2. Vá em Configurações > Tags (ou onde fica o cadastro de tags). 3. Clique em 'Nova Tag' (ou similar). 4. Tente cadastrar a tag com nome '🚫 Não Agendou'. 5. Observe o campo 'Slug' (se ainda existir): deve estar invisivel ou com placeholder/label/tooltip explicando o que é (ex: 'gerado automaticamente'), OU o campo deve ter sido REMOVIDO. 6. Você não deve precisar entender termos técnicos para criar a tag. Salve e confira que a tag '🚫 Não Agendou' foi criada corretamente com o emoji.",
+      "tipoTeste": "Sistema",
+      "resultado": "Selecione um resultado",
+      "tipoFalha": "N/A",
+      "resolutionStatus": "Selecione um status",
+      "evidences": [],
+      "devComments": [],
+      "priority": "Média",
+      "tags": [],
+      "executionHistory": [
+        {
+          "timestamp": "2026-06-27T00:18:38.000Z",
+          "oldResult": "Criado",
+          "newResult": "Selecione um resultado",
+          "author": "Anônimo"
+        }
+      ],
+      "tickets": [],
+      "dataEntrega": "",
+      "responsavel": "",
+      "prioridadePlanejamento": "N/A",
+      "peso": "N/A"
+    },
+    "test-case-15": {
+      "id": 15,
+      "displayId": "15",
+      "parentId": null,
+      "isReTest": false,
+      "reTestCount": 0,
+      "itemTestado": "[3.9] Resultado 'Delay' NÃO tem mais opção 'Agendamento'",
+      "condicaoAprovacao": "Ao escolher resultado 'Delay' na visita, a opção 'Agendamento' NÃO deve mais existir entre as sub-opções.",
+      "descricao": "1. Faça login como especialista. 2. Pegue um lead que esteja na etapa de 'Visita'. 3. Abra o lead, vá na aba 'Visita'. 4. Procure o campo de resultado da visita e selecione 'Delay'. 5. Devem aparecer sub-opções/checkboxes para o tipo do Delay. 6. Confira a lista das opções: deve ter 'Não atendeu', 'Não reagendou', 'Pediu para retornar'. 7. A opção 'Agendamento' NÃO pode aparecer nessa lista (foi removida — esse caso passou a ser tratado pelo resultado C2).",
+      "tipoTeste": "Sistema",
+      "resultado": "Selecione um resultado",
+      "tipoFalha": "N/A",
+      "resolutionStatus": "Selecione um status",
+      "evidences": [],
+      "devComments": [],
+      "priority": "Média",
+      "tags": [],
+      "executionHistory": [
+        {
+          "timestamp": "2026-06-27T00:18:38.000Z",
+          "oldResult": "Criado",
+          "newResult": "Selecione um resultado",
+          "author": "Anônimo"
+        }
+      ],
+      "tickets": [],
+      "dataEntrega": "",
+      "responsavel": "",
+      "prioridadePlanejamento": "N/A",
+      "peso": "N/A"
+    },
+    "test-case-16": {
+      "id": 16,
+      "displayId": "16",
+      "parentId": null,
+      "isReTest": false,
+      "reTestCount": 0,
+      "itemTestado": "[3.10] Resultado 'C2' tem campo 'Tipo de C2' com 2 opções",
+      "condicaoAprovacao": "Ao escolher 'C2' como resultado da visita, deve aparecer obrigatoriamente um seletor 'Tipo de C2' com as opções 'C2 Agendamento' e 'C2 Venda'.",
+      "descricao": "1. Faça login como especialista. 2. Pegue um lead na etapa de 'Visita'. 3. Abra o lead → aba 'Visita'. 4. No campo de resultado da visita, selecione 'C2'. 5. Logo abaixo (ou ao lado), deve aparecer um novo campo chamado 'Tipo de C2' — em formato de seletor/dropdown ou radio buttons. 6. Confira que existem exatamente 2 opções: 'C2 Agendamento' e 'C2 Venda'. 7. Os textos ao passar o mouse (tooltip) ou descrição devem explicar a diferença: C2 Agendamento = lead remarcou o agendamento da visita; C2 Venda = lead veio à visita mas remarcou retorno.",
+      "tipoTeste": "Sistema",
+      "resultado": "Selecione um resultado",
+      "tipoFalha": "N/A",
+      "resolutionStatus": "Selecione um status",
+      "evidences": [],
+      "devComments": [],
+      "priority": "Alta",
+      "tags": [],
+      "executionHistory": [
+        {
+          "timestamp": "2026-06-27T00:18:38.000Z",
+          "oldResult": "Criado",
+          "newResult": "Selecione um resultado",
+          "author": "Anônimo"
+        }
+      ],
+      "tickets": [],
+      "dataEntrega": "",
+      "responsavel": "",
+      "prioridadePlanejamento": "N/A",
+      "peso": "N/A"
+    },
+    "test-case-17": {
+      "id": 17,
+      "displayId": "17",
+      "parentId": null,
+      "isReTest": false,
+      "reTestCount": 0,
+      "itemTestado": "[3.10] Tipo de C2 é salvo no banco e persiste",
+      "condicaoAprovacao": "O 'Tipo de C2' selecionado deve ser salvo no banco de dados e continuar aparecendo corretamente após fechar e reabrir o lead.",
+      "descricao": "1. Em um lead na etapa de Visita, registre resultado 'C2' do tipo 'C2 Agendamento'. Salve. 2. Feche o modal e reabra o mesmo lead. 3. Na aba Visita, o resultado deve continuar 'C2' e o tipo 'C2 Agendamento' deve estar selecionado. 4. Repita com outro lead salvando como 'C2 Venda' — também deve persistir corretamente. 5. Verifique se a informação aparece no Histórico do lead (aba ou tela de Histórico).",
+      "tipoTeste": "Sistema",
+      "resultado": "Selecione um resultado",
+      "tipoFalha": "N/A",
+      "resolutionStatus": "Selecione um status",
+      "evidences": [],
+      "devComments": [],
+      "priority": "Alta",
+      "tags": [],
+      "executionHistory": [
+        {
+          "timestamp": "2026-06-27T00:18:38.000Z",
+          "oldResult": "Criado",
+          "newResult": "Selecione um resultado",
+          "author": "Anônimo"
+        }
+      ],
+      "tickets": [],
+      "dataEntrega": "",
+      "responsavel": "",
+      "prioridadePlanejamento": "N/A",
+      "peso": "N/A"
+    },
+    "test-case-18": {
+      "id": 18,
+      "displayId": "18",
+      "parentId": null,
+      "isReTest": false,
+      "reTestCount": 0,
+      "itemTestado": "[3.11] Resultado 'Não Fechou' tem agora campo de Objeção (dropdown)",
+      "condicaoAprovacao": "Ao escolher 'Não Fechou' como resultado, o sistema deve mostrar um dropdown 'Objeção' com as 9 opções listadas, e NÃO mostrar mais os antigos campos de data/hora.",
+      "descricao": "1. Faça login como especialista. 2. Pegue um lead na etapa de Visita. 3. Abra o lead → aba 'Visita'. 4. Selecione resultado 'Não Fechou'. 5. Os campos antigos de data/hora/resultado NÃO devem mais aparecer. 6. Em seu lugar, deve aparecer um campo OBRIGATÓRIO chamado 'Objeção' em formato de dropdown/lista. 7. Clique no dropdown e confira que tem exatamente estas 9 opções: 'Sem dinheiro', 'Falar com cônjuge', 'Tem seguro', 'Vou pensar', 'Não tem interesse', 'Benefícios', 'Adesão zero', 'Comparação de preço', 'Outros'.",
+      "tipoTeste": "Sistema",
+      "resultado": "Selecione um resultado",
+      "tipoFalha": "N/A",
+      "resolutionStatus": "Selecione um status",
+      "evidences": [],
+      "devComments": [],
+      "priority": "Alta",
+      "tags": [],
+      "executionHistory": [
+        {
+          "timestamp": "2026-06-27T00:18:38.000Z",
+          "oldResult": "Criado",
+          "newResult": "Selecione um resultado",
+          "author": "Anônimo"
+        }
+      ],
+      "tickets": [],
+      "dataEntrega": "",
+      "responsavel": "",
+      "prioridadePlanejamento": "N/A",
+      "peso": "N/A"
+    },
+    "test-case-19": {
+      "id": 19,
+      "displayId": "19",
+      "parentId": null,
+      "isReTest": false,
+      "reTestCount": 0,
+      "itemTestado": "[3.11] Objeção é salva, persiste e aparece no Histórico",
+      "condicaoAprovacao": "A objeção escolhida deve ser salva, persistir entre sessões e aparecer no Histórico. Salvar 'Não Fechou' sem objeção deve ser bloqueado com aviso ao usuário.",
+      "descricao": "1. Em um lead na etapa de Visita, registre resultado 'Não Fechou' com objeção 'Sem dinheiro'. Salve. 2. Feche e reabra o lead → a objeção 'Sem dinheiro' deve continuar selecionada. 3. Repita com outro lead usando objeção 'Vou pensar' — também deve salvar corretamente. 4. Vá em 'Histórico' (menu lateral) e procure os 2 registros — a objeção escolhida deve aparecer no detalhe de cada um. 5. A objeção é obrigatória: tentar salvar com 'Não Fechou' sem escolher objeção deve dar um aviso impedindo o salvamento.",
+      "tipoTeste": "Sistema",
+      "resultado": "Selecione um resultado",
+      "tipoFalha": "N/A",
+      "resolutionStatus": "Selecione um status",
+      "evidences": [],
+      "devComments": [],
+      "priority": "Alta",
+      "tags": [],
+      "executionHistory": [
+        {
+          "timestamp": "2026-06-27T00:18:38.000Z",
+          "oldResult": "Criado",
+          "newResult": "Selecione um resultado",
+          "author": "Anônimo"
+        }
+      ],
+      "tickets": [],
+      "dataEntrega": "",
+      "responsavel": "",
+      "prioridadePlanejamento": "N/A",
+      "peso": "N/A"
+    },
+    "test-case-20": {
+      "id": 20,
+      "displayId": "20",
+      "parentId": null,
+      "isReTest": false,
+      "reTestCount": 0,
+      "itemTestado": "[3.11] Opção 'Outros' permite texto livre (se aplicável)",
+      "condicaoAprovacao": "Ao escolher objeção 'Outros', o ideal é existir um campo de texto livre complementar — confirme com o time se essa parte foi implementada. O caso é informativo.",
+      "descricao": "1. Em um lead na etapa de Visita, selecione resultado 'Não Fechou' e escolha objeção 'Outros'. 2. Confira se ao escolher 'Outros' aparece um campo de texto livre para o especialista descrever a objeção específica. 3. Se aparecer o campo, preencha com texto 'Cliente vai mudar de cidade' e salve. 4. Reabra o lead e confira que o texto continua lá. 5. SE não aparecer campo de texto livre (porque o projeto definiu que 'Outros' é só uma opção genérica), apenas confirme que a opção foi salva normalmente. Comente o resultado.",
+      "tipoTeste": "Sistema",
+      "resultado": "Selecione um resultado",
+      "tipoFalha": "N/A",
+      "resolutionStatus": "Selecione um status",
+      "evidences": [],
+      "devComments": [],
+      "priority": "Baixa",
+      "tags": [],
+      "executionHistory": [
+        {
+          "timestamp": "2026-06-27T00:18:38.000Z",
+          "oldResult": "Criado",
+          "newResult": "Selecione um resultado",
+          "author": "Anônimo"
+        }
+      ],
+      "tickets": [],
+      "dataEntrega": "",
+      "responsavel": "",
+      "prioridadePlanejamento": "N/A",
+      "peso": "N/A"
+    }
+  },
+  "ticketData": {},
+  "testCaseCounter": 219,
+  "ticketCounter": 0,
+  "exportedAt": "2026-06-27T00:25:00.784Z",
+  "meta": {
+    "name": "Run completo + Ajustes",
+    "description": "20 casos | ✅ 0 aprovados | ❌ 0 reprovados | ⏭ 20 não executados",
+    "author": "Brayan",
+    "date": "2026-06-27"
+  }
+}

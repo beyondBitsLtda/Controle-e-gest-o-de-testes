@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Plano de Testes</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.7.0/mammoth.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+
+    <div class="background-wallpaper">
+        <svg class="triangle-1" viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="0,0 100,0 0,100"></polygon></svg>
+        <svg class="triangle-2" viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="0,100 100,100 50,0"></polygon></svg>
+        <svg class="triangle-3" viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="100,0 100,100 0,100"></polygon></svg>
+    </div>
+
+    <div class="container">
+       
+        <div class="header">
+             <img src="logo.png" alt="Logo da Empresa" class="header-logo">
+           
+            <div class="header-text">
+                
+                <h1>Controle de Plano de Testes</h1>
+                <p>Gerenciamento de Casos de Teste</p>
+            </div>
+        </div>
+
+        <div class="content-wrapper">
+
+            <aside class="sidebar">
+                <h2>Gerenciar Projetos</h2>
+                <button class="btn btn-history" onclick="saveProjectToLocalStorage()">💾 Salvar Projeto</button>
+                <button class="btn btn-history" onclick="showLoadProjectModal()">📂 Carregar Projeto</button>
+                <button class="btn btn-history" onclick="showProjectManagementModal()">🗂️ Gerenciar Salvos</button>
+                
+                <hr class="sidebar-divider">
+                
+                <h3>Relatórios e Reports</h3>
+                <button class="btn btn-email" data-ai-feature="generateEmailReport" onclick="exportForEmail()">📧 Exportar Email</button>
+                <button class="btn btn-roadmap" onclick="generateTestRoadmap()">🗺️ Gerar Roadmap</button>
+
+                <hr class="sidebar-divider">
+
+                <h3>Visualização e Configurações</h3>
+                <button id="view-toggle-btn" class="btn btn-import">Ver Modo Kanban</button>
+                <button class="btn" style="background-color: #6f42c1;" onclick="showControlPanel()">⚙️ Painel de Controle</button>
+
+                <hr class="sidebar-divider">
+
+                <h3>Backup</h3>
+                <button class="btn btn-import" onclick="exportAllProjects()">📤 Exportar Backup</button>
+                <input type="file" id="import-projects-file" accept=".json" style="display: none;" onchange="importAndDisplayProject(event)">
+                <button class="btn btn-import" onclick="document.getElementById('import-projects-file').click()">📥 Importar Backup</button>
+            </aside>
+
+            <div class="main-content">
+                <div class="controls-section">
+                    <div class="csv-input-section">
+                        <h3>Importar Casos de Teste via Arquivo</h3>
+                        <p>Use CSV para importar uma lista pronta ou Word para gerar casos a partir de um escopo com IA.</p>
+                        
+                        <input type="file" id="csv-upload" accept=".csv" style="display: none;" onchange="handleCSVUpload(event)">
+                        <button class="btn btn-import" onclick="document.getElementById('csv-upload').click()">⬆️ Importar CSV</button>
+
+                        <input type="file" id="word-upload" accept=".docx" style="display: none;" onchange="handleWordUpload(event)">
+                        <button class="btn btn-import" data-ai-feature="importFromWord" style="background-color: #2b579a;" onclick="document.getElementById('word-upload').click()">📄 Importar Escopo (Word)</button>
+                    </div>
+                </div>
+
+                <div id="initial-view-container" style="display: none;">
+                    <h2>📂 Projetos Salvos</h2>
+                    <p>Selecione um projeto para carregar ou comece um novo adicionando um caso de teste.</p>
+                    <div id="initial-project-list" class="project-list-container">
+                        </div>
+                </div>
+
+                <div id="test-case-container"></div>
+                <div id="kanban-board-container" style="display: none;"></div>
+
+                <div class="summary-section">
+                    <div class="summary-title">📊 Resumo Geral</div>
+                    <div class="summary-stats">
+                        <div class="stat-card"><div class="stat-number" id="total-cases">0</div><div class="stat-label">Total de Casos</div></div>
+                        <div class="stat-card"><div class="stat-number" id="total-approved">0</div><div class="stat-label">Aprovados</div></div>
+                        <div class="stat-card"><div class="stat-number" id="total-failed">0</div><div class="stat-label">Reprovados</div></div>
+                        <div class="stat-card"><div class="stat-number" id="total-invalid">0</div><div class="stat-label">Inválidos</div></div>
+                    </div>
+                </div>
+
+                <div class="console-log-section">
+                    <div class="console-log-header">
+                        <h2>📝 Logs do Console</h2>
+                        <button class="btn btn-clear-logs" onclick="clearCapturedLogs()">Limpar Logs</button>
+                    </div>
+                    <div id="log-output" class="log-output"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="fixed-action-buttons">
+            <button class="btn btn-action-discrete" data-ai-feature="chatAssistant" id="open-chat-btn" title="Assistente de Ajuda">💬</button>
+            <button class="btn btn-action-discrete btn-warning" id="filter-failed-button" onclick="filterFailedTests()" title="Mostrar Apenas Reprovados">⚠️</button>
+            <button class="btn btn-action-discrete btn-add" onclick="addNewTestCase()" title="Adicionar Novo Caso de Teste">➕</button>
+        </div>
+    </div>
+
+    <div id="email-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'email-modal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal('email-modal')">&times;</span>
+            <h2>📧 Exportar Relatório por Email</h2>
+            <p>A IA irá gerar um relatório completo. O corpo do email será copiado para sua área de transferência.</p>
+            <p id="email-copy-feedback" style="font-weight: bold; margin-top: 10px;"></p>
+            <div class="modal-actions">
+                <a id="email-link" href="#" class="btn btn-email">Abrir Cliente de Email</a>
+                <button id="download-json-button" class="btn btn-import">Baixar Backup do Projeto</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="project-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'project-modal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal('project-modal')">&times;</span>
+            <h2>📂 Carregar Projeto Salvo</h2>
+            <div id="project-list-container" class="project-list-container">
+                </div>
+        </div>
+    </div>
+
+    <div id="management-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'management-modal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal('management-modal')">&times;</span>
+            <h2>🗂️ Gerenciar Projetos</h2>
+            <div id="management-list-container" class="project-list-container">
+                </div>
+        </div>
+    </div>
+
+    <div id="media-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'media-modal')">
+        <div class="modal-content media-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal('media-modal')">&times;</span>
+            <div id="media-modal-player"></div>
+        </div>
+    </div>
+
+    <div id="recording-preview-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'recording-preview-modal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="discardRecording()">&times;</span>
+            <h2>📼 Pré-visualização da Gravação</h2>
+            <video id="recording-preview-player" controls style="width: 100%; border-radius: 8px; margin-top: 15px;"></video>
+            <div class="modal-actions">
+                <button class="btn btn-remove" onclick="discardRecording()">Descartar</button>
+                <button class="btn btn-add" onclick="attachRecording()">Anexar Gravação</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="roadmap-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'roadmap-modal')">
+        <div class="modal-content roadmap-modal-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal('roadmap-modal')">&times;</span>
+            <div class="roadmap-output">
+                <div class="roadmap-container">
+                    <h2>🗺️ Roadmap do Plano de Testes</h2>
+                    <p>Visão geral do progresso e resultados do ciclo de testes atual.</p>
+                    <div id="roadmap-ai-summary" class="roadmap-highlight-section" data-ai-feature="summarizeRoadmap" style="display: none; text-align: left;"></div>
+                    <div class="roadmap-charts">
+                        <div class="chart-container">
+                            <h3>Resultados Gerais</h3>
+                            <canvas id="resultsChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <h3>Tipos de Falha (Reprovados)</h3>
+                            <canvas id="failureTypesChart"></canvas>
+                        </div>
+                    </div>
+                    <div id="roadmap-highlight-section" class="roadmap-highlight-section" style="display: none;">
+                        <h3>🔄 Ponto de Atenção: Re-testes</h3>
+                        <p>O caso <strong class="highlight-id"></strong> (<em class="highlight-item"></em>) foi o que mais precisou de re-testes, com um total de <strong class="highlight-count"></strong> execuções.</p>
+                    </div>
+                    <div id="roadmap-textual-details" class="roadmap-details"></div>
+                </div>
+            </div>
+             <div class="modal-actions">
+                <button class="btn btn-email" onclick="copyRoadmapText()">Copiar Texto</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="log-attach-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'log-attach-modal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal('log-attach-modal')">&times;</span>
+            <h2>📝 Anexar Log do Console</h2>
+            <p>Cole o log copiado do console de desenvolvedor (F12) na área abaixo.</p>
+            <textarea id="log-attach-textarea" placeholder="Cole o texto do log aqui..."></textarea>
+            <div class="modal-actions">
+                <button class="btn btn-record" data-ai-feature="analyzeLog" onclick="analyzeLogWithAI()">🤖 Analisar Log com IA</button>
+                <button class="btn btn-add" onclick="attachPastedLogs()">Anexar Log</button>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="flowchart-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'flowchart-modal')">
+        <div class="modal-content flowchart-editor-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal('flowchart-modal')">&times;</span>
+            <h2>📈 Criador de Fluxograma por Descrição</h2>
+            <p>Descreva o fluxo desejado em linguagem natural e a IA irá gerar o diagrama para você.</p>
+            
+            <div class="flowchart-editor-container">
+                <div class="flowchart-step">
+                    <label for="flowchart-description">1. Descreva seu processo ou fluxo:</label>
+                    <textarea id="flowchart-description" placeholder="Ex: O usuário clica em login. O sistema verifica se os dados estão corretos. Se sim, vai para a tela inicial. Se não, mostra uma mensagem de erro."></textarea>
+                    <button id="generate-flowchart-btn" data-ai-feature="generateFlowchart" class="btn btn-record" onclick="generateFlowchartFromDescription()">🤖 Gerar Fluxograma com IA</button>
+                </div>
+
+                <div class="flowchart-step">
+                    <label for="flowchart-code">2. Código Mermaid Gerado (você pode editar)</label>
+                    <textarea id="flowchart-code" oninput="renderFlowchartPreview()"></textarea>
+                </div>
+
+                <div class="flowchart-step">
+                    <label>3. Visualização</label>
+                    <div id="flowchart-preview" class="mermaid"></div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-remove" onclick="closeModal('flowchart-modal')">Cancelar</button>
+                <button class="btn btn-add" onclick="attachFlowchart()">📎 Anexar como Evidência</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="flowchart-viewer-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'flowchart-viewer-modal')">
+        <div class="modal-content flowchart-viewer-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal('flowchart-viewer-modal')">&times;</span>
+            <h2>🗺️ Visualizador de Fluxograma</h2>
+            <div id="flowchart-viewer-output" class="mermaid">
+                </div>
+        </div>
+    </div>
+
+    <div id="kanban-modal" class="modal-overlay">
+        <div class="modal-content kanban-modal-content">
+            <span class="modal-close" onclick="toggleView()">&times;</span>
+            <h2>Quadro Kanban</h2>
+            <div id="kanban-modal-board" class="kanban-board-container-fullscreen">
+                </div>
+        </div>
+    </div>
+
+    <div id="chat-assistant-modal" class="chat-assistant-modal" style="display: none;">
+        <div class="chat-window">
+            <div class="chat-header">
+                <h3>💬 Assistente de Ajuda</h3>
+                <button class="chat-close-btn" id="chat-close-btn">&times;</button>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                </div>
+            <div class="chat-input-container">
+                <input type="text" id="chat-input" placeholder="Pergunte sobre a ferramenta...">
+                <button id="chat-send-btn">Enviar</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="control-panel-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'control-panel-modal')">
+        <div class="modal-content control-panel-content" onclick="event.stopPropagation()">
+            <span class="modal-close" onclick="closeModal('control-panel-modal')">&times;</span>
+            <h2>⚙️ Painel de Controle do Tester</h2>
+            
+            <div class="panel-sections-wrapper">
+                <div class="panel-section profile-section">
+                    <h3>Meu Perfil</h3>
+                    <div class="profile-details">
+                        <img id="control-panel-img" src="profile_default.png" alt="Foto de Perfil" class="profile-picture" onclick="document.getElementById('profile-pic-upload').click()">
+                        <input type="file" id="profile-pic-upload" accept="image/*" style="display: none;" onchange="handleProfilePictureUpload(event)">
+                        <div class="profile-info">
+                            <label for="control-panel-name">Nome de Tester:</label>
+                            <input type="text" id="control-panel-name" class="form-input">
+                            <small>Este nome será usado em seus comentários.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-section stats-section">
+                    <h3>Minhas Estatísticas (Projeto Atual)</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-value" id="cp-total-tests">0</span>
+                            <span class="stat-title">Total</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="cp-approved-tests">0</span>
+                            <span class="stat-title">Aprovados</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="cp-failed-tests">0</span>
+                            <span class="stat-title">Reprovados</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-section settings-section">
+                <h3>Configurações de IA e Aparência</h3>
+                <div class="settings-columns">
+                    <div class="settings-column">
+                        <div class="setting-toggle">
+                            <label for="toggle-ai-generateDescription">Geração de Descrição</label>
+                            <label class="switch"><input type="checkbox" id="toggle-ai-generateDescription"><span class="slider round"></span></label>
+                        </div>
+                        <div class="setting-toggle">
+                            <label for="toggle-ai-generateFlowchart">Geração de Fluxograma</label>
+                            <label class="switch"><input type="checkbox" id="toggle-ai-generateFlowchart"><span class="slider round"></span></label>
+                        </div>
+                        <div class="setting-toggle">
+                            <label for="toggle-ai-importFromWord">Importar Escopo (Word)</label>
+                            <label class="switch"><input type="checkbox" id="toggle-ai-importFromWord"><span class="slider round"></span></label>
+                        </div>
+                         <div class="setting-toggle">
+                            <label for="toggle-ai-prioritizeFailure">Priorização de Falhas</label>
+                            <label class="switch"><input type="checkbox" id="toggle-ai-prioritizeFailure"><span class="slider round"></span></label>
+                        </div>
+                        <div class="setting-toggle">
+                            <label for="toggle-ai-summarizeRoadmap">Sumarização do Roadmap</label>
+                            <label class="switch"><input type="checkbox" id="toggle-ai-summarizeRoadmap"><span class="slider round"></span></label>
+                        </div>
+                    </div>
+                    <div class="settings-column">
+                       
+                        <div class="setting-toggle">
+                            <label for="toggle-ai-generateEmailReport">Relatório por E-mail</label>
+                            <label class="switch"><input type="checkbox" id="toggle-ai-generateEmailReport"><span class="slider round"></span></label>
+                        </div>
+                        <div class="setting-toggle">
+                            <label for="toggle-ai-analyzeLog">Análise de Logs</label>
+                            <label class="switch"><input type="checkbox" id="toggle-ai-analyzeLog"><span class="slider round"></span></label>
+                        </div>
+                        <div class="setting-toggle">
+                            <label for="toggle-ai-analyzeMedia">Análise de Mídia (Img/Vid)</label>
+                            <label class="switch"><input type="checkbox" id="toggle-ai-analyzeMedia"><span class="slider round"></span></label>
+                        </div>
+                         <div class="setting-toggle">
+                            <label for="toggle-ai-chatAssistant">Assistente de Chat</label>
+                            <label class="switch"><input type="checkbox" id="toggle-ai-chatAssistant"><span class="slider round"></span></label>
+                        </div>
+                        <hr style="margin: 10px 0; border-color: #ddd;">
+                        <div class="setting-toggle">
+                            <label for="toggle-dark-mode">Ativar Modo Noturno</label>
+                            <label class="switch"><input type="checkbox" id="toggle-dark-mode"><span class="slider round"></span></label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-add" onclick="saveUserSettings()">Salvar e Fechar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="script.js"></script>
+</body>
+</html>

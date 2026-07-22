@@ -1,0 +1,45 @@
+{
+  "testCaseData": {
+    "test-case-1": {
+      "id": 1,
+      "displayId": "1",
+      "parentId": null,
+      "isReTest": false,
+      "reTestCount": 0,
+      "itemTestado": "Teste - 1",
+      "condicaoAprovacao": "",
+      "descricao": "",
+      "tipoTeste": "Selecione um tipo",
+      "resultado": "Selecione um resultado",
+      "tipoFalha": "N/A",
+      "resolutionStatus": "Selecione um status",
+      "evidences": [],
+      "devComments": [],
+      "priority": null,
+      "tags": [],
+      "executionHistory": [
+        {
+          "timestamp": "2026-04-29T16:54:44.840Z",
+          "oldResult": "Criado",
+          "newResult": "Selecione um resultado",
+          "author": "Anônimo"
+        }
+      ],
+      "tickets": [],
+      "dataEntrega": "",
+      "responsavel": "",
+      "prioridadePlanejamento": "N/A",
+      "peso": "N/A"
+    }
+  },
+  "ticketData": {},
+  "testCaseCounter": 1,
+  "ticketCounter": 0,
+  "exportedAt": "2026-04-29T16:55:45.737Z",
+  "meta": {
+    "name": "Card-de-teste",
+    "description": "1 casos | ✅ 0 aprovados | ❌ 0 reprovados | ⏭ 1 não executados",
+    "author": "Islan",
+    "date": "2026-04-29"
+  }
+}

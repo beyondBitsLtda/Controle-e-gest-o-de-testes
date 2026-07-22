@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roadmap 2025 - Formulário de Controle de Teste</title>
+    <style>
+        :root {
+            --cor-primaria: #CB0F10;
+            --cor-cinza-fundo: #f0f0f0;
+            --cor-texto-escuro: #212529;
+            --cor-texto-claro: #495057;
+            --cor-botao-funcao: #6c757d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--cor-cinza-fundo), #e8e8e8);
+            color: var(--cor-texto-escuro);
+            line-height: 1.6;
+        }
+
+        .email-container {
+            max-width: 700px;
+            margin: 20px auto;
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .email-header {
+            background: linear-gradient(135deg, var(--cor-primaria), #e63946);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .email-header h1 {
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .email-header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .email-content {
+            padding: 40px 30px;
+        }
+
+        .greeting {
+            font-size: 1.1em;
+            margin-bottom: 25px;
+            color: var(--cor-texto-escuro);
+            font-weight: 500;
+        }
+
+        .intro-text {
+            font-size: 1em;
+            margin-bottom: 30px;
+            color: var(--cor-texto-claro);
+        }
+
+        .roadmap-section {
+            background: var(--cor-cinza-fundo);
+            border-radius: 12px;
+            padding: 30px;
+            margin: 30px 0;
+            border-left: 5px solid var(--cor-primaria);
+        }
+
+        .roadmap-title {
+            font-size: 1.4em;
+            color: var(--cor-primaria);
+            margin-bottom: 20px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .milestone-item {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            border-left: 4px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .milestone-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+
+        .milestone-item.bug-fix {
+            border-left-color: var(--cor-primaria);
+        }
+
+        .milestone-item.enhancement {
+            border-left-color: #28a745;
+        }
+
+        .milestone-item.architecture {
+            border-left-color: var(--cor-botao-funcao);
+        }
+
+        .milestone-date {
+            background: var(--cor-primaria);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .milestone-date.green {
+            background: #28a745;
+        }
+
+        .milestone-date.gray {
+            background: var(--cor-botao-funcao);
+        }
+
+        .milestone-name {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: var(--cor-texto-escuro);
+            margin-bottom: 8px;
+        }
+
+        .milestone-desc {
+            font-size: 0.9em;
+            color: var(--cor-texto-claro);
+            margin-bottom: 12px;
+        }
+
+        .features-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .feature-tag {
+            background: var(--cor-cinza-fundo);
+            color: var(--cor-texto-escuro);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.7em;
+            font-weight: 500;
+        }
+
+        .important-notice {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border: 2px solid #ffc107;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 30px 0;
+            position: relative;
+        }
+
+        .important-notice::before {
+            content: "⚠️";
+            font-size: 1.5em;
+            position: absolute;
+            top: -10px;
+            left: 20px;
+            background: #ffc107;
+            padding: 5px 10px;
+            border-radius: 50%;
+        }
+
+        .notice-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: var(--cor-texto-escuro);
+            margin-bottom: 15px;
+            margin-left: 40px;
+        }
+
+        .notice-text {
+            color: var(--cor-texto-claro);
+            margin-left: 40px;
+            font-size: 0.95em;
+        }
+
+        .next-steps {
+            background: linear-gradient(135deg, #d1ecf1, #b8daff);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 30px 0;
+        }
+
+        .next-steps-title {
+            font-size: 1.2em;
+            color: var(--cor-primaria);
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .steps-list {
+            list-style: none;
+            counter-reset: step-counter;
+        }
+
+        .steps-list li {
+            counter-increment: step-counter;
+            margin-bottom: 12px;
+            position: relative;
+            padding-left: 40px;
+            color: var(--cor-texto-claro);
+        }
+
+        .steps-list li::before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: var(--cor-primaria);
+            color: white;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .closing {
+            margin: 30px 0;
+            padding: 20px 0;
+            border-top: 2px solid var(--cor-cinza-fundo);
+        }
+
+        .signature {
+            margin-top: 25px;
+            color: var(--cor-texto-claro);
+            font-style: italic;
+        }
+
+        .signature strong {
+            color: var(--cor-texto-escuro);
+            font-style: normal;
+        }
+
+        .email-footer {
+            background: var(--cor-cinza-fundo);
+            padding: 20px 30px;
+            text-align: center;
+            color: var(--cor-texto-claro);
+            font-size: 0.9em;
+        }
+
+        .progress-indicator {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .progress-text {
+            color: var(--cor-texto-escuro);
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--cor-cinza-fundo);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--cor-primaria), #e63946);
+            width: 0%;
+            animation: progressLoad 2s ease-out forwards;
+        }
+
+        @keyframes progressLoad {
+            to { width: 25%; }
+        }
+
+        @media (max-width: 600px) {
+            .email-container {
+                margin: 10px;
+                border-radius: 10px;
+            }
+            
+            .email-header, .email-content {
+                padding: 20px 20px;
+            }
+            
+            .email-header h1 {
+                font-size: 1.8em;
+            }
+            
+            .roadmap-section, .important-notice, .next-steps {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="email-header">
+            <h1>🚀 Roadmap 2025</h1>
+            <p>Formulário de Controle de Teste</p>
+        </div>
+
+        <div class="email-content">
+            <div class="greeting">
+                Olá, Equipe! 👋
+            </div>
+
+            <div class="intro-text">
+                Temos o prazer de apresentar o <strong>Roadmap oficial de melhorias</strong> para o Formulário de Controle de Teste durante o ano de 2025. Este cronograma foi cuidadosamente planejado para garantir evolução contínua e otimização da nossa ferramenta.
+            </div>
+
+            <div class="progress-indicator">
+                <div class="progress-text">Progresso do Roadmap 2025</div>
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+            </div>
+
+            <div class="roadmap-section">
+                <div class="roadmap-title">📅 Cronograma de Implementações</div>
+
+                <div class="milestone-item bug-fix">
+                    <div class="milestone-date">2ª Quinzena - Agosto 2025</div>
+                    <div class="milestone-name">🐛 Bug Fix Release</div>
+                    <div class="milestone-desc">Correção de pequenos ajustes e melhorias para otimizar a experiência do usuário.</div>
+                    <div class="features-list">
+                        <span class="feature-tag">Ajuste da Barra de Progressão</span>
+                        <span class="feature-tag">Correção do Resumo de Estatísticas</span>
+                        <span class="feature-tag">Otimização de Performance</span>
+                        <span class="feature-tag">Melhorias de UI/UX</span>
+                    </div>
+                </div>
+
+                <div class="milestone-item enhancement">
+                    <div class="milestone-date green">1ª Quinzena - Setembro 2025</div>
+                    <div class="milestone-name">📧 Refinamento de Relatórios</div>
+                    <div class="milestone-desc">Aperfeiçoamento significativo no sistema de geração e envio de relatórios por email.</div>
+                    <div class="features-list">
+                        <span class="feature-tag">Otimização de Email</span>
+                        <span class="feature-tag">Templates Aprimorados</span>
+                    </div>
+                </div>
+
+                <div class="milestone-item architecture">
+                    <div class="milestone-date gray">Último Trimestre 2025</div>
+                    <div class="milestone-name">⚡ Revisão Arquitetural</div>
+                    <div class="milestone-desc">Reestruturação completa visando escalabilidade e preparação para futuras implementações.</div>
+                    <div class="features-list">
+                        <span class="feature-tag">Refatoração de Código</span>
+                        <span class="feature-tag">Melhoria de Escalabilidade</span>
+                        <span class="feature-tag">Segmentação de Funções</span>
+                        <span class="feature-tag">Teste IndexDB</span>
+                        <span class="feature-tag">Preparação de Infraestrutura</span>
+                        <span class="feature-tag">Novo Roadmap 2026</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="important-notice">
+                <div class="notice-title">Importante - Atualização de Repositórios</div>
+                <div class="notice-text">
+                    <strong>Assim que cada etapa for concluída</strong>, o formulário atual será automaticamente revisado e atualizado em:
+                    <br><br>
+                    • <strong>Repositórios de desenvolvimento</strong><br>
+                    • <strong>Pastas da rede compartilhada</strong><br>
+                    • <strong>Ambientes de produção</strong>
+                    <br><br>
+                    Todas as versões serão sincronizadas para garantir consistência em todo o ambiente de trabalho.
+                </div>
+            </div>
+
+            <div class="next-steps">
+                <div class="next-steps-title">
+                    🎯 Próximos Passos
+                </div>
+                <ul class="steps-list">
+                    <li>Acompanhar o progresso através dos canais oficiais de comunicação</li>
+                    <li>Reportar feedbacks e sugestões durante cada fase de implementação</li>
+                    <li>Participar dos testes quando solicitado pela equipe de desenvolvimento</li>
+                    <li>Verificar as atualizações nos repositórios após cada release</li>
+                </ul>
+            </div>
+
+            <div class="closing">
+                <p>Este roadmap representa nosso compromisso com a <strong>melhoria contínua</strong> e <strong>excelência técnica</strong>. Cada etapa foi planejada para agregar valor real ao nosso fluxo de trabalho.</p>
+                
+                <p style="margin-top: 20px;">Para dúvidas, sugestões ou acompanhamento detalhado do progresso, entre em contato com a equipe de desenvolvimento.</p>
+            </div>
+
+            <div class="signature">
+                <strong>Equipe de Desenvolvimento</strong><br>
+                Formulário de Controle de Teste<br>
+                <em>Inovação • Qualidade • Eficiência</em>
+            </div>
+        </div>
+
+        <div class="email-footer">
+            <p>📧 Este é um comunicado oficial sobre o Roadmap 2025</p>
+            <p>© 2025 - Formulário de Controle de Teste | Roadmap de Melhorias</p>
+        </div>
+    </div>
+</body>
+</html>
