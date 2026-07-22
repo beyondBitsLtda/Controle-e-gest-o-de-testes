@@ -18,20 +18,6 @@
         <svg class="triangle-3" viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="100,0 100,100 0,100"></polygon></svg>
     </div>
 
-    <!-- Banner aviso runs inativas -->
-    <div id="runs-expiry-banner" style="display:none; position:fixed; bottom:20px; right:20px; z-index:9999; max-width:360px; background:#fff3cd; border:1px solid #ffc107; border-left:4px solid #e6a800; border-radius:10px; padding:16px 18px; box-shadow:0 4px 16px rgba(0,0,0,0.12); font-size:0.88em; color:#5a4000;">
-        <div style="display:flex; align-items:flex-start; gap:10px;">
-            <span style="font-size:1.4em; line-height:1;">⚠️</span>
-            <div>
-                <strong style="display:block; margin-bottom:4px;">Atenção: Runs com prazo de expiração</strong>
-                Runs salvas no repositório são automaticamente apagadas após <strong>5 dias</strong> de inatividade.<br><br>
-                Mantenha backups locais das runs importantes usando o botão <strong>📥 Exportar Backup</strong>.
-                <div style="margin-top:10px; text-align:right;">
-                    <button onclick="document.getElementById('runs-expiry-banner').style.display='none'; localStorage.setItem('bannerDismissed', Date.now())" style="background:#e6a800; color:white; border:none; border-radius:6px; padding:5px 14px; cursor:pointer; font-size:0.9em; font-weight:600;">Entendido</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <div class="container">
        
@@ -56,6 +42,7 @@
                 <button id="manage-tickets-btn" class="btn" style="background-color: #3b6ff0;" onclick="showTicketManagementView()">🎫 Gerenciar Tickets</button>
                 <button class="btn btn-email" onclick="exportForEmail()">📧 Exportar Relatório</button>
                 <button class="btn btn-roadmap" onclick="generateTestRoadmap()">🗺️ Gerar Roadmap</button>
+                <button class="btn" style="background-color: #8e44ad;" onclick="dbOpenDashboard()">📊 Dashboard</button>
                 <button id="retrospective-btn" class="btn" style="background-color: #3b6ff0;">▶️ Iniciar Retrospectiva</button>
                 <button id="analytics-btn" class="btn" style="background-color: #3b6ff0;">🔬 Análise de Riscos</button>
 
@@ -72,11 +59,6 @@
                 <input type="file" id="import-projects-file" accept=".json" style="display: none;" onchange="importAndDisplayProject(event)">
                 <button class="btn btn-import" onclick="document.getElementById('import-projects-file').click()">📥 Importar Backup</button>
 
-                <hr class="sidebar-divider">
-
-                <h3>Backups do Repositório</h3>
-                <button class="btn" style="background-color: #3b6ff0;" onclick="openRepoBackupsModal()">☁️ Carregar Runs</button>
-                <button class="btn" style="background-color: #22a06b;" onclick="openPublishRepoModal()">📤 Salvar Run</button>
             </aside>
 
 
@@ -158,111 +140,8 @@
     </div>
 
 
-    <!-- Modal: Publicar Backup no Repositório -->
-    <div id="publish-repo-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'publish-repo-modal')">
-        <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 780px;">
-            <span class="modal-close" onclick="closeModal('publish-repo-modal')">&times;</span>
-            <h2>☁️ Publicar no Repositório</h2>
-            <p style="color: var(--cor-texto-claro, #6c757d); margin-bottom: 20px; font-size: 0.9em;">
-                Salva o backup atual na pasta <code>backups/</code> do repositório e atualiza o índice automaticamente.
-            </p>
-
-            <div class="form-group">
-                <label class="form-label">Nome do backup <span style="color:#CB0F10">*</span></label>
-                <input type="text" id="pub-name" class="form-input" placeholder="Ex: Sprint 22 - Regressão Completa">
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Projeto</label>
-                <input type="text" id="pub-project" class="form-input" placeholder="Ex: Fluxo de Caixa, Sprint 22..." list="pub-project-list">
-                <datalist id="pub-project-list"></datalist>
-                <small style="color: #6c757d; display: block; margin-top: 4px;">Agrupa esta run dentro de um projeto na lista de backups.</small>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Arquivo (filename) <span style="color:#CB0F10">*</span></label>
-                <input type="text" id="pub-filename" class="form-input" placeholder="sprint-22-regressao.json">
-                <small style="color: #6c757d; display: block; margin-top: 4px;">Será salvo em <code>backups/</code>. Use apenas letras, números e hífens.</small>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Descrição</label>
-                <input type="text" id="pub-description" class="form-input" placeholder="Resumo do que foi testado nesta run">
-            </div>
-
-            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                <div>
-                    <label class="form-label">Autor</label>
-                    <input type="text" id="pub-author" class="form-input" placeholder="Nome do tester">
-                </div>
-                <div>
-                    <label class="form-label">Data</label>
-                    <input type="date" id="pub-date" class="form-input">
-                </div>
-            </div>
-
-            <hr style="margin: 20px 0; border-color: var(--cor-cinza-fundo, #e9ecef);">
-            <p style="font-size: 0.85em; color: #6c757d; margin-bottom: 12px;">
-                🔑 <strong>Configuração do GitLab</strong> — necessária apenas uma vez.
-                <button onclick="toggleGitlabConfig()" style="background:none;border:none;color:#3b6ff0;cursor:pointer;font-size:0.85em;text-decoration:underline;padding:0 4px;">
-                    configurar / editar
-                </button>
-            </p>
-
-            <div id="gitlab-config-section" style="display:none;">
-                <div class="form-group">
-                    <label class="form-label">GitLab Project ID <span style="color:#CB0F10">*</span></label>
-                    <input type="text" id="pub-project-id" class="form-input" placeholder="12345678">
-                    <small style="color: #6c757d; display: block; margin-top: 4px;">Encontre em: Repositório → Settings → General → Project ID</small>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Branch</label>
-                    <input type="text" id="pub-branch" class="form-input" placeholder="main" value="main">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Personal Access Token (PAT) <span style="color:#CB0F10">*</span></label>
-                    <input type="password" id="pub-token" class="form-input" placeholder="glpat-xxxxxxxxxxxxxxxxxxxx">
-                    <small style="color: #6c757d; display: block; margin-top: 4px;">Salvo apenas neste navegador (localStorage). Precisa de escopo <code>api</code>.</small>
-                </div>
-                <button class="btn" style="background:#6c757d; font-size:0.85em; padding: 8px 16px; margin-bottom: 8px;" onclick="saveGitlabConfig()">💾 Salvar configuração</button>
-            </div>
-
-            <div id="pub-status" style="display:none; padding: 10px 14px; border-radius: 8px; font-size: 0.9em; margin-top: 8px;"></div>
-
-            <div class="modal-actions" style="margin-top: 20px;">
-                <button class="btn" style="background:#6c757d;" onclick="closeModal('publish-repo-modal')">Cancelar</button>
-                <button class="btn" style="background:#3b6ff0;" id="pub-submit-btn" onclick="publishToRepo()">☁️ Publicar no Repositório</button>
-            </div>
-        </div>
-    </div>
 
 
-    <!-- Modal: Backups do Repositório -->
-    <div id="repo-backups-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'repo-backups-modal')">
-        <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 780px;">
-            <span class="modal-close" onclick="closeModal('repo-backups-modal')">&times;</span>
-            <h2>☁️ Backups do Repositório</h2>
-
-            <div class="backups-tabs">
-                <button class="backup-tab active" id="tab-projects" onclick="switchBackupTab('projects')">📁 Por Projeto</button>
-                <button class="backup-tab" id="tab-all" onclick="switchBackupTab('all')">📋 Todos</button>
-            </div>
-
-            <!-- Visão: Por Projeto -->
-            <div id="backups-view-projects" style="max-height: 520px; overflow-y: auto;">
-                <div id="repo-projects-list" style="display: flex; flex-direction: column; gap: 0;"></div>
-            </div>
-
-            <!-- Visão: Todos -->
-            <div id="backups-view-all" style="display:none; max-height: 520px; overflow-y: auto;">
-                <div id="repo-backups-list" style="display: flex; flex-direction: column; gap: 0; padding-right: 4px;">
-                    <div id="repo-backups-loading" style="text-align: center; padding: 30px; color: #6c757d;">
-                        <span style="font-size: 1.5em;">⏳</span><br>Carregando lista de backups...
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <div id="email-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'email-modal')">
         <div class="modal-content" onclick="event.stopPropagation()">
@@ -583,6 +462,7 @@
     <script src="js/09-retrospective-analytics.js"></script>
     <script src="js/10-export-backup-gitlab.js"></script>
     <script src="js/11-supabase-sync.js"></script>
+    <script src="js/12-dashboard.js"></script>
     <script src="export-teams.js"></script>
 </body>
 </html>
