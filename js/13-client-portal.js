@@ -20,6 +20,7 @@ let portalChartInstance = null;        // instância Chart.js do gráfico do cli
 let portalRecState = null;             // estado da gravação de tela em andamento
 let portalModuleFilter = '';           // filtro de categoria (módulo) do cliente
 let portalStatusFilter = '';           // filtro de status do cliente
+let portalSortBy = 'recentes';         // ordenação da lista do cliente
 let portalViewAllMode = false;         // ver todos os chamados do projeto (se permitido)
 let portalReplyEvidences = [];         // evidências anexadas a uma resposta/comentário
 let portalClientAccess = [];           // linhas de acesso do cliente (com can_view_all)
@@ -432,6 +433,12 @@ async function portalEnterClientMode() {
             <select id="portal-cat-filter" onchange="portalModuleFilter=this.value; portalRefreshClientView()" style="padding:8px; border-radius:6px; border:1px solid #ccc; font-size:0.85em;">
               <option value="">Todas as categorias</option>
             </select>
+            <select id="portal-sort" onchange="portalSortBy=this.value; portalRefreshClientView()" style="padding:8px; border-radius:6px; border:1px solid #ccc; font-size:0.85em;">
+              <option value="recentes">Mais recentes</option>
+              <option value="antigos">Mais antigos</option>
+              <option value="vencimento">Vencimento do SLA</option>
+              <option value="prioridade">Prioridade</option>
+            </select>
             <button onclick="portalOpenNewTicketModal()" style="border:none; background:#3ecf8e; color:#fff; border-radius:8px; padding:10px 16px; font-weight:600; cursor:pointer;">➕ Abrir chamado</button>
           </div>
         </div>
@@ -536,6 +543,19 @@ async function portalRefreshClientView() {
         (!portalModuleFilter || t.module_id === portalModuleFilter) &&
         (!portalStatusFilter || t.status === portalStatusFilter)
     );
+
+    // Ordenação
+    const prioRank = { 'Crítica': 4, 'Alta': 3, 'Média': 2, 'Baixa': 1 };
+    tickets.sort((a, b) => {
+        if (portalSortBy === 'antigos') return new Date(a.created_at) - new Date(b.created_at);
+        if (portalSortBy === 'prioridade') return (prioRank[b.priority]||0) - (prioRank[a.priority]||0);
+        if (portalSortBy === 'vencimento') {
+            const da = a.sla_resolution_due ? new Date(a.sla_resolution_due).getTime() : Infinity;
+            const db = b.sla_resolution_due ? new Date(b.sla_resolution_due).getTime() : Infinity;
+            return da - db;
+        }
+        return new Date(b.created_at) - new Date(a.created_at); // recentes (padrão)
+    });
 
     // Cards de resumo (reagem ao modo e ao filtro)
     const open = tickets.filter(t => t.status === 'Aberto').length;
