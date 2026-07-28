@@ -743,8 +743,26 @@ async function portalReopenTicket(ticketId) {
     const client = sbGetClient();
     const { error } = await client.rpc('reopen_ticket', { p_ticket: ticketId });
     if (error) { alert('Não foi possível reabrir: ' + error.message); return; }
+    // Notifica reabertura por e-mail
+    try {
+        const { data: t } = await client.from('support_tickets').select('*').eq('id', ticketId).single();
+        if (t) portalNotifyTicket('UPDATE', t, { status: 'Resolvido' });
+    } catch (e) { console.warn('[portal] notify reopen:', e); }
     portalCloseModal('ticket-detail-modal');
     portalRefreshClientView();
+}
+
+// Dispara o e-mail chamando a Edge Function notify-ticket (a partir do app).
+// Falha silenciosa: nunca bloqueia a criação/reabertura do chamado.
+async function portalNotifyTicket(type, record, oldRecord) {
+    try {
+        const client = sbGetClient();
+        await client.functions.invoke('notify-ticket', {
+            body: { type, record, old_record: oldRecord }
+        });
+    } catch (e) {
+        console.warn('[portal] notify-ticket falhou (e-mail):', e);
+    }
 }
 
 async function portalUpdateTicketField(ticketId, field, value) {
