@@ -18,6 +18,10 @@ let portalActiveTicket = null;         // ticket aberto no detalhe
 let portalAdminSelectedProject = null; // projeto selecionado no admin interno
 let portalChartInstance = null;        // instância Chart.js do gráfico do cliente
 let portalRecState = null;             // estado da gravação de tela em andamento
+let portalModuleFilter = '';           // filtro de categoria (módulo) do cliente
+let portalViewAllMode = false;         // ver todos os chamados do projeto (se permitido)
+let portalReplyEvidences = [];         // evidências anexadas a uma resposta/comentário
+let portalClientAccess = [];           // linhas de acesso do cliente (com can_view_all)
 
 const PORTAL_STATUSES = ['Aberto','Em Análise','Em Desenvolvimento','Aguardando Cliente','Resolvido','Fechado'];
 const PORTAL_PRIORITIES = ['Baixa','Média','Alta','Crítica'];
@@ -218,6 +222,8 @@ function portalShowRecControls() {
     bar.style.cssText = 'position:fixed; bottom:22px; left:50%; transform:translateX(-50%); z-index:17000; background:#c0392b; color:#fff; border-radius:30px; padding:10px 18px; display:flex; align-items:center; gap:12px; box-shadow:0 4px 16px rgba(0,0,0,0.3);';
     bar.innerHTML = `<span style="width:12px; height:12px; border-radius:50%; background:#fff; animation:portalBlink 1s infinite;"></span>
         <span id="portal-rec-time" style="font-variant-numeric:tabular-nums;">00:00</span>
+        <button id="portal-draw-btn" onclick="portalToggleDraw()" style="border:none; background:rgba(255,255,255,0.25); color:#fff; border-radius:20px; padding:6px 12px; font-weight:600; cursor:pointer;">✏️ Desenhar</button>
+        <button id="portal-clear-btn" onclick="portalClearDraw()" style="display:none; border:none; background:rgba(255,255,255,0.25); color:#fff; border-radius:20px; padding:6px 12px; font-weight:600; cursor:pointer;">🧹 Limpar</button>
         <button onclick="portalStopScreenRecording()" style="border:none; background:#fff; color:#c0392b; border-radius:20px; padding:6px 14px; font-weight:700; cursor:pointer;">⏹ Parar e anexar</button>`;
     document.body.appendChild(bar);
     portalRecState.timer = setInterval(() => {
@@ -230,6 +236,54 @@ function portalShowRecControls() {
 function portalRemoveRecControls() {
     document.getElementById('portal-rec-bar')?.remove();
     if (portalRecState && portalRecState.timer) clearInterval(portalRecState.timer);
+    portalStopDraw();
+}
+
+// --- DESENHO SOBRE A TELA DURANTE A GRAVAÇÃO (fica gravado no vídeo) ---
+let portalDrawState = null;
+function portalToggleDraw() {
+    if (portalDrawState) { portalStopDraw(); return; }
+    const canvas = document.createElement('canvas');
+    canvas.id = 'portal-draw-canvas';
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    canvas.style.cssText = 'position:fixed; inset:0; z-index:16999; cursor:crosshair;';
+    const ctx = canvas.getContext('2d');
+    ctx.strokeStyle = '#e50000'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    let drawing = false;
+    const pos = e => { const p = e.touches ? e.touches[0] : e; return { x: p.clientX, y: p.clientY }; };
+    const start = e => { drawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); };
+    const move = e => { if (!drawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
+    const end = () => { drawing = false; };
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', end);
+    canvas.addEventListener('touchstart', start, { passive: false });
+    canvas.addEventListener('touchmove', move, { passive: false });
+    canvas.addEventListener('touchend', end);
+    document.body.appendChild(canvas);
+    portalDrawState = { canvas, end };
+    const btn = document.getElementById('portal-draw-btn');
+    if (btn) { btn.textContent = '✏️ Parar desenho'; btn.style.background = '#fff'; btn.style.color = '#c0392b'; }
+    const clr = document.getElementById('portal-clear-btn');
+    if (clr) clr.style.display = '';
+}
+
+function portalStopDraw() {
+    if (!portalDrawState) return;
+    window.removeEventListener('mouseup', portalDrawState.end);
+    portalDrawState.canvas.remove();
+    portalDrawState = null;
+    const btn = document.getElementById('portal-draw-btn');
+    if (btn) { btn.textContent = '✏️ Desenhar'; btn.style.background = 'rgba(255,255,255,0.25)'; btn.style.color = '#fff'; }
+    const clr = document.getElementById('portal-clear-btn');
+    if (clr) clr.style.display = 'none';
+}
+
+function portalClearDraw() {
+    if (!portalDrawState) return;
+    const c = portalDrawState.canvas;
+    c.getContext('2d').clearRect(0, 0, c.width, c.height);
 }
 
 // --- VISUALIZADORES SIMPLES ------------------------------------------
@@ -357,6 +411,7 @@ async function portalEnterClientMode() {
         <div style="display:flex; align-items:center; gap:12px; font-size:0.9em;">
           <span id="portal-project-selector"></span>
           <span>👤 ${email}</span>
+          <button onclick="portalOpenChangePassword()" style="border:none; background:rgba(255,255,255,0.2); color:#fff; border-radius:6px; padding:6px 12px; cursor:pointer;">🔑 Trocar senha</button>
           <button onclick="sbSignOut()" style="border:none; background:#c0392b; color:#fff; border-radius:6px; padding:6px 12px; cursor:pointer;">Sair</button>
         </div>
       </header>
@@ -366,9 +421,15 @@ async function portalEnterClientMode() {
           <h3 style="margin:0 0 10px; font-size:1em; color:#1c2e4a;">📊 Meus chamados por status</h3>
           <div style="height:230px; position:relative;"><canvas id="portal-status-chart"></canvas></div>
         </div>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-          <h2 style="margin:0; font-size:1.2em; color:#1c2e4a;">Meus chamados</h2>
-          <button onclick="portalOpenNewTicketModal()" style="border:none; background:#3ecf8e; color:#fff; border-radius:8px; padding:10px 16px; font-weight:600; cursor:pointer;">➕ Abrir chamado</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+          <h2 style="margin:0; font-size:1.2em; color:#1c2e4a;" id="portal-list-title">Meus chamados</h2>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <span id="portal-viewall-wrap"></span>
+            <select id="portal-cat-filter" onchange="portalModuleFilter=this.value; portalRefreshClientView()" style="padding:8px; border-radius:6px; border:1px solid #ccc; font-size:0.85em;">
+              <option value="">Todas as categorias</option>
+            </select>
+            <button onclick="portalOpenNewTicketModal()" style="border:none; background:#3ecf8e; color:#fff; border-radius:8px; padding:10px 16px; font-weight:600; cursor:pointer;">➕ Abrir chamado</button>
+          </div>
         </div>
         <div id="portal-ticket-list"><em>Carregando...</em></div>
       </main>`;
@@ -385,11 +446,19 @@ async function portalLoadContext() {
     const { data: projects } = await client.from('support_projects').select('*').order('name');
     const { data: modules } = await client.from('support_modules').select('*').eq('active', true);
     const { data: slas } = await client.from('sla_policies').select('*');
+    // Acessos do próprio cliente (traz can_view_all por projeto)
+    let access = [];
+    try {
+        const r = await client.from('client_project_access').select('project_id, can_view_all');
+        access = r.data || [];
+    } catch (e) { access = []; }
+    portalClientAccess = access;
 
     portalProjects = (projects || []).map(p => ({
         ...p,
         modules: (modules || []).filter(m => m.project_id === p.id),
-        slas: (slas || []).filter(s => s.project_id === p.id)
+        slas: (slas || []).filter(s => s.project_id === p.id),
+        canViewAll: !!(access.find(a => a.project_id === p.id) || {}).can_view_all
     }));
     if (!portalAdminSelectedProject && portalProjects.length) {
         portalAdminSelectedProject = portalProjects[0].id;
@@ -412,6 +481,7 @@ function portalRenderProjectSelector() {
 
 async function portalRefreshClientView() {
     const client = sbGetClient();
+    const session = await sbGetSession();
     const proj = portalCurrentProject();
     const listEl = document.getElementById('portal-ticket-list');
     const sumEl = document.getElementById('portal-summary');
@@ -421,13 +491,39 @@ async function portalRefreshClientView() {
         return;
     }
 
-    const { data: tickets, error } = await client.from('support_tickets')
-        .select('*, support_modules(name)')
+    // Alimenta o seletor de categoria (módulos do projeto)
+    const catSel = document.getElementById('portal-cat-filter');
+    if (catSel) {
+        catSel.innerHTML = '<option value="">Todas as categorias</option>' +
+            (proj.modules || []).map(m => `<option value="${m.id}" ${portalModuleFilter===m.id?'selected':''}>${m.name}</option>`).join('');
+    }
+
+    // Toggle "Meus / Todos do projeto" só aparece se tiver permissão
+    const vaWrap = document.getElementById('portal-viewall-wrap');
+    if (vaWrap) {
+        vaWrap.innerHTML = proj.canViewAll ? `
+            <label style="font-size:0.85em; display:flex; align-items:center; gap:6px; cursor:pointer;">
+              <input type="checkbox" ${portalViewAllMode?'checked':''} onchange="portalViewAllMode=this.checked; portalRefreshClientView()">
+              Ver todos do projeto
+            </label>` : '';
+    }
+    const viewAll = portalViewAllMode && proj.canViewAll;
+    const titleEl = document.getElementById('portal-list-title');
+    if (titleEl) titleEl.textContent = viewAll ? 'Chamados do projeto' : 'Meus chamados';
+
+    // Monta a query
+    let q = client.from('support_tickets')
+        .select('*, support_modules(name), profiles(full_name)')
         .eq('project_id', proj.id)
         .order('created_at', { ascending: false });
+    if (!viewAll) q = q.eq('opened_by', session.user.id);
+    const { data: allTickets, error } = await q;
     if (error) { listEl.innerHTML = '<span style="color:#c0392b;">Erro: ' + error.message + '</span>'; return; }
 
-    // Cards de resumo (visão macro)
+    // Filtro de categoria (módulo)
+    const tickets = (allTickets || []).filter(t => !portalModuleFilter || t.module_id === portalModuleFilter);
+
+    // Cards de resumo (reagem ao modo e ao filtro)
     const open = tickets.filter(t => t.status === 'Aberto').length;
     const inProg = tickets.filter(t => ['Em Análise','Em Desenvolvimento','Aguardando Cliente'].includes(t.status)).length;
     const done = tickets.filter(t => ['Resolvido','Fechado'].includes(t.status)).length;
@@ -441,21 +537,23 @@ async function portalRefreshClientView() {
           <div style="font-size:0.85em; color:#666;">${label}</div>
         </div>`).join('');
 
+    // Gráfico reage ao conjunto filtrado
     portalRenderStatusChart(tickets);
 
-    if (!tickets.length) { listEl.innerHTML = '<p>Você ainda não abriu nenhum chamado.</p>'; return; }
-    listEl.innerHTML = tickets.map(t => portalTicketRow(t)).join('');
+    if (!tickets.length) { listEl.innerHTML = '<p>Nenhum chamado para os filtros selecionados.</p>'; return; }
+    listEl.innerHTML = tickets.map(t => portalTicketRow(t, viewAll)).join('');
 }
 
-function portalTicketRow(t) {
+function portalTicketRow(t, showRequester) {
     const sla = portalSlaState(t);
     const mod = t.support_modules?.name || '—';
+    const who = showRequester ? ` · 👤 ${t.profiles?.full_name || '—'}` : '';
     return `
       <div onclick="portalOpenTicketDetail('${t.id}')" style="background:#fff; border-radius:10px; padding:14px 16px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.08); cursor:pointer; display:flex; align-items:center; gap:14px; border-left:5px solid ${STATUS_COLORS[t.status]||'#888'};">
         <div style="font-weight:700; color:#1c2e4a; min-width:56px;">#${t.display_id}</div>
         <div style="flex:1; min-width:0;">
           <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.title}</div>
-          <div style="font-size:0.8em; color:#888;">Módulo: ${mod} · ${new Date(t.created_at).toLocaleString('pt-BR')}</div>
+          <div style="font-size:0.8em; color:#888;">Módulo: ${mod} · ${new Date(t.created_at).toLocaleString('pt-BR')}${who}</div>
           ${portalSlaBar(t)}
         </div>
         ${portalBadge(t.priority, PRIORITY_COLORS[t.priority])}
@@ -613,6 +711,7 @@ async function portalSubmitTicket() {
 
 // --- DETALHE DO CHAMADO (cliente e interno reaproveitam) -------------
 async function portalOpenTicketDetail(ticketId, internalView = false) {
+    portalReplyEvidences = [];
     const client = sbGetClient();
     const { data: t, error } = await client.from('support_tickets')
         .select('*, support_modules(name), support_projects(name)')
@@ -656,7 +755,25 @@ async function portalOpenTicketDetail(ticketId, internalView = false) {
           </div>` : ''}
         ${definitivelyClosed ? `<div style="margin:10px 0; padding:10px; background:#f0f0f0; border-radius:8px; font-size:0.85em; color:#666;">🔒 Chamado encerrado. O prazo de reabertura expirou.</div>` : ''}`;
 
-    portalModalShell('ticket-detail-modal', `Chamado #${t.display_id}`, `
+    const isClosed = t.status === 'Fechado';
+    const replyBlock = isClosed ? `
+        <div style="padding:12px; background:#f0f0f0; border-radius:8px; color:#666; font-size:0.88em;">🔒 Chamado fechado. Não é possível adicionar comentários ou evidências.</div>
+    ` : `
+        <textarea id="ptc-body" placeholder="Escreva uma resposta..." style="width:100%; min-height:70px; padding:10px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;"></textarea>
+        <div style="display:flex; align-items:center; gap:8px; margin:6px 0; flex-wrap:wrap;">
+          <button type="button" onclick="portalStartScreenRecording(portalReplyEvidences, 'ptc-evidence-grid')" style="border:none; background:#c0392b; color:#fff; border-radius:8px; padding:7px 12px; font-weight:600; cursor:pointer; font-size:0.85em;">🎥 Gravar tela</button>
+          <span style="font-size:0.8em; color:#888;">anexe evidência abaixo · ou cole um print com Ctrl+V</span>
+        </div>
+        ${portalMakeEvidenceGrid('ptc-evidence-grid', 'portalReplyEvidences')}
+        ${internalView ? `<div style="margin:6px 0; display:flex; gap:16px; flex-wrap:wrap;">
+            <label style="font-size:0.82em;"><input type="checkbox" id="ptc-internal"> 🔒 Nota interna (o cliente NÃO vê)</label>
+            <label style="font-size:0.82em;"><input type="checkbox" id="ptc-resolution"> ✅ Marcar como resolução (fecha o chamado)</label>
+          </div>` : ''}
+        <div style="text-align:right; margin-top:8px;">
+          <button onclick="portalAddComment('${t.id}', ${internalView})" style="border:none; background:#3b6ff0; color:#fff; border-radius:8px; padding:9px 18px; font-weight:600; cursor:pointer;">Enviar resposta</button>
+        </div>`;
+
+    const detailModal = portalModalShell('ticket-detail-modal', `Chamado #${t.display_id}`, `
         <h3 style="margin:0 0 4px;">${t.title}</h3>
         <div style="font-size:0.82em; color:#888; margin-bottom:6px;">Módulo: ${mod} · Aberto em ${new Date(t.created_at).toLocaleString('pt-BR')}${internalView ? ` · Projeto: ${t.support_projects?.name||''}`:''}</div>
         ${controls}
@@ -666,15 +783,20 @@ async function portalOpenTicketDetail(ticketId, internalView = false) {
         <h4 style="margin:0 0 8px; border-top:1px solid #eee; padding-top:12px;">Conversa</h4>
         <div id="ticket-comments" style="max-height:260px; overflow-y:auto; margin-bottom:12px;"></div>
 
-        <textarea id="ptc-body" placeholder="Escreva uma resposta..." style="width:100%; min-height:70px; padding:10px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;"></textarea>
-        ${internalView ? `<div style="margin:6px 0; display:flex; gap:16px; flex-wrap:wrap;">
-            <label style="font-size:0.82em;"><input type="checkbox" id="ptc-internal"> 🔒 Nota interna (o cliente NÃO vê)</label>
-            <label style="font-size:0.82em;"><input type="checkbox" id="ptc-resolution"> ✅ Marcar como resolução (fecha o chamado)</label>
-          </div>` : ''}
-        <div style="text-align:right; margin-top:8px;">
-          <button onclick="portalAddComment('${t.id}', ${internalView})" style="border:none; background:#3b6ff0; color:#fff; border-radius:8px; padding:9px 18px; font-weight:600; cursor:pointer;">Enviar resposta</button>
-        </div>
+        ${replyBlock}
     `);
+
+    // Colar imagem (Ctrl+V) direto na resposta
+    if (!isClosed) {
+        detailModal.addEventListener('paste', (e) => {
+            const items = e.clipboardData?.items || [];
+            for (const it of items) {
+                if (it.type.startsWith('image/')) {
+                    portalHandleUpload([it.getAsFile()], portalReplyEvidences, 'ptc-evidence-grid');
+                }
+            }
+        });
+    }
 
     // Renderiza evidências do chamado (somente leitura)
     const evGrid = document.getElementById('ticket-detail-evidence');
@@ -693,35 +815,64 @@ async function portalLoadComments(ticketId, internalView) {
     if (error) { box.innerHTML = '<span style="color:#c0392b;">Erro: '+error.message+'</span>'; return; }
     if (!comments.length) { box.innerHTML = '<em style="color:#999;">Nenhuma mensagem ainda.</em>'; return; }
 
-    box.innerHTML = comments.map(c => {
+    // Resolve evidências sb:// dos comentários
+    for (const c of comments) {
+        if (Array.isArray(c.evidences) && c.evidences.length) {
+            try { await sbResolveMediaObjects(c.evidences, client); } catch (e) { /* ignore */ }
+        }
+    }
+
+    box.innerHTML = comments.map((c, idx) => {
         const mine = c.author_role === 'interno';
         let bg = c.internal_note ? '#fff6e0' : (mine ? '#eaf1ff' : '#f0f0f0');
         let border = '';
         let tag = c.internal_note ? ' 🔒 nota interna' : '';
         if (c.is_resolution) { bg = '#e6f7ea'; border = 'border:1px solid #1e8e3e;'; tag = ' ✅ resolução'; }
         const align = mine ? 'margin-left:auto;' : '';
+        const evGridId = `cmt-ev-${idx}`;
+        const hasEv = Array.isArray(c.evidences) && c.evidences.length;
         return `<div style="max-width:82%; ${align} background:${bg}; ${border} border-radius:10px; padding:9px 12px; margin-bottom:8px;">
             <div style="font-size:0.75em; color:${c.is_resolution ? '#1e8e3e' : '#888'}; margin-bottom:2px; font-weight:${c.is_resolution ? '700' : '400'};">${c.author_name||c.author_role}${tag} · ${new Date(c.created_at).toLocaleString('pt-BR')}</div>
             <div style="white-space:pre-wrap;">${c.body.replace(/</g,'&lt;')}</div>
+            ${hasEv ? `<div id="${evGridId}" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;"></div>` : ''}
           </div>`;
     }).join('');
     box.scrollTop = box.scrollHeight;
+
+    // Renderiza as evidências de cada comentário (depois do innerHTML)
+    comments.forEach((c, idx) => {
+        if (Array.isArray(c.evidences) && c.evidences.length) {
+            c.evidences.forEach(ev => portalRenderEvidence(ev, `cmt-ev-${idx}`, null, { ticketId, canEdit: !internalView ? true : true }));
+        }
+    });
 }
 
 async function portalAddComment(ticketId, internalView) {
     const client = sbGetClient();
     const session = await sbGetSession();
     const body = document.getElementById('ptc-body').value.trim();
-    if (!body) return;
+    const hasEvidence = portalReplyEvidences.length > 0;
+    if (!body && !hasEvidence) return;
     const internalNote = internalView && document.getElementById('ptc-internal')?.checked;
     const isResolution = internalView && document.getElementById('ptc-resolution')?.checked;
+
+    // Sobe as evidências anexadas (grandes vão pro Storage)
+    let evidences = [];
+    if (hasEvidence) {
+        evidences = JSON.parse(JSON.stringify(portalReplyEvidences));
+        try {
+            const folder = `chamados/${session.user.id}/comentarios/${ticketId}-${Date.now()}`;
+            await portalUploadEvidences(evidences, folder);
+        } catch (e) { alert('Falha ao enviar evidência: ' + e.message); return; }
+    }
 
     const { error } = await client.from('support_ticket_comments').insert({
         ticket_id: ticketId,
         author_id: session.user.id,
         author_name: (typeof userSettings !== 'undefined' && userSettings.authorName) || session.user.email,
         author_role: internalView ? 'interno' : 'cliente',
-        body,
+        body: body || '(evidência anexada)',
+        evidences,
         internal_note: !!internalNote && !isResolution,
         is_resolution: !!isResolution
     });
@@ -732,9 +883,10 @@ async function portalAddComment(ticketId, internalView) {
         await client.from('support_tickets').update({ status: 'Resolvido' }).eq('id', ticketId);
     }
 
+    portalReplyEvidences = [];
     document.getElementById('ptc-body').value = '';
     if (isResolution) { portalCloseModal('ticket-detail-modal'); portalOpenTicketDetail(ticketId, internalView); }
-    else await portalLoadComments(ticketId, internalView);
+    else { portalCloseModal('ticket-detail-modal'); portalOpenTicketDetail(ticketId, internalView); }
     // Atualiza a lista de origem
     if (internalView) portalRefreshInternalQueue(); else portalRefreshClientView();
 }
@@ -763,6 +915,35 @@ async function portalNotifyTicket(type, record, oldRecord) {
     } catch (e) {
         console.warn('[portal] notify-ticket falhou (e-mail):', e);
     }
+}
+
+// --- TROCA DE SENHA (requerente) -------------------------------------
+function portalOpenChangePassword() {
+    portalModalShell('portal-pass-modal', '🔑 Trocar minha senha', `
+        <label style="font-weight:600; font-size:0.9em;">Nova senha</label>
+        <input id="pp-new" type="password" placeholder="Mínimo 6 caracteres" style="width:100%; margin:4px 0 12px; padding:10px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
+        <label style="font-weight:600; font-size:0.9em;">Confirmar nova senha</label>
+        <input id="pp-confirm" type="password" placeholder="Repita a senha" style="width:100%; margin:4px 0 12px; padding:10px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
+        <div id="pp-status" style="min-height:20px; font-size:0.85em;"></div>
+        <div style="text-align:right;">
+          <button onclick="portalCloseModal('portal-pass-modal')" style="border:none; background:#ddd; border-radius:8px; padding:10px 16px; cursor:pointer; margin-right:8px;">Cancelar</button>
+          <button onclick="portalSubmitNewPassword()" style="border:none; background:#3b6ff0; color:#fff; border-radius:8px; padding:10px 20px; font-weight:600; cursor:pointer;">Salvar</button>
+        </div>
+    `);
+}
+
+async function portalSubmitNewPassword() {
+    const client = sbGetClient();
+    const pass = document.getElementById('pp-new').value;
+    const conf = document.getElementById('pp-confirm').value;
+    const st = document.getElementById('pp-status');
+    if (pass.length < 6) { st.style.color = '#c0392b'; st.textContent = 'A senha precisa ter ao menos 6 caracteres.'; return; }
+    if (pass !== conf) { st.style.color = '#c0392b'; st.textContent = 'As senhas não conferem.'; return; }
+    st.style.color = '#3b6ff0'; st.textContent = 'Salvando...';
+    const { error } = await client.auth.updateUser({ password: pass });
+    if (error) { st.style.color = '#c0392b'; st.textContent = '❌ ' + error.message; return; }
+    st.style.color = '#1e8e3e'; st.textContent = '✅ Senha alterada com sucesso!';
+    setTimeout(() => portalCloseModal('portal-pass-modal'), 1500);
 }
 
 async function portalUpdateTicketField(ticketId, field, value) {
@@ -1014,6 +1195,9 @@ function portalRenderAdminBody() {
           <input id="pa-cli-pass" placeholder="Senha inicial" style="flex:1; min-width:120px; padding:8px; border:1px solid #ccc; border-radius:6px;">
           <button onclick="portalInviteClient()" style="border:none; background:#8e44ad; color:#fff; border-radius:6px; padding:8px 14px; cursor:pointer;">Criar acesso</button>
         </div>
+        <label style="font-size:0.85em; display:flex; align-items:center; gap:6px; margin-top:8px; cursor:pointer;">
+          <input type="checkbox" id="pa-cli-viewall"> Este cliente pode ver <b>todos</b> os chamados do projeto (perfil supervisor)
+        </label>
         <div id="pa-invite-status" style="font-size:0.85em; margin-top:8px; min-height:18px;"></div>
       </section>`;
 }
@@ -1069,18 +1253,19 @@ async function portalInviteClient() {
     const name = document.getElementById('pa-cli-name').value.trim();
     const email = document.getElementById('pa-cli-email').value.trim();
     const password = document.getElementById('pa-cli-pass').value;
+    const canViewAll = document.getElementById('pa-cli-viewall')?.checked || false;
     const statusEl = document.getElementById('pa-invite-status');
     if (!email || password.length < 6) { statusEl.style.color='#c0392b'; statusEl.textContent='E-mail e senha (mín. 6) obrigatórios.'; return; }
     statusEl.style.color = '#3b6ff0'; statusEl.textContent = 'Criando acesso...';
 
     // Chama a Edge Function segura (service role) — cria o usuário-cliente.
     const { data, error } = await client.functions.invoke('portal-admin', {
-        body: { action: 'create_client', email, password, full_name: name, project_ids: [portalCurrentProject().id] }
+        body: { action: 'create_client', email, password, full_name: name, project_ids: [portalCurrentProject().id], can_view_all: canViewAll }
     });
     if (error) { statusEl.style.color='#c0392b'; statusEl.textContent='❌ ' + (error.message || 'Falha ao criar cliente.'); return; }
     if (data && data.error) { statusEl.style.color='#c0392b'; statusEl.textContent='❌ ' + data.error; return; }
     statusEl.style.color = '#1e8e3e';
-    statusEl.textContent = `✅ Cliente ${email} criado com acesso a "${portalCurrentProject().name}".`;
+    statusEl.textContent = (data && data.message) ? '✅ ' + data.message : `✅ Cliente ${email} criado com acesso a "${portalCurrentProject().name}".`;
     document.getElementById('pa-cli-name').value = '';
     document.getElementById('pa-cli-email').value = '';
     document.getElementById('pa-cli-pass').value = '';
