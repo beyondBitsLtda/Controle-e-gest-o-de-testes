@@ -71,34 +71,47 @@ function portalHandleUpload(files, targetArray, gridId) {
     }
 }
 
-function portalRenderEvidence(ev, gridId, targetArray) {
+function portalRenderEvidence(ev, gridId, targetArray, ctx) {
     const grid = document.getElementById(gridId);
     if (!grid || !ev || !ev.src) return;
     const uploadLabel = grid.querySelector('.evidence-upload');
     const wrap = document.createElement('div');
-    wrap.className = 'evidence-preview-wrapper';
-    wrap.style.cssText = 'position:relative; width:110px; height:110px; border-radius:8px; overflow:hidden; border:1px solid #ddd; background:#f4f4f4;';
-    const s = ev.src.replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+    wrap.className = 'portal-evidence-item';
+    wrap.style.cssText = 'position:relative; width:110px; height:110px; min-width:110px; padding:0; border-radius:8px; overflow:hidden; border:1px solid #ddd; background:#f4f4f4; flex:0 0 auto;';
     let media;
     if (ev.type && ev.type.startsWith('image/')) {
-        media = `<img src="${s}" style="width:100%; height:100%; object-fit:cover; cursor:pointer;" onclick="openMediaModal('${s}','${ev.type}','${ev.name}')">`;
+        media = document.createElement('img');
+        media.src = ev.src;
+        media.style.cssText = 'width:100%; height:100%; object-fit:cover; cursor:pointer;';
+        media.onclick = () => portalViewImage(ev.src);
     } else if (ev.type && ev.type.startsWith('video/')) {
-        media = `<video src="${s}" style="width:100%; height:100%; object-fit:cover; cursor:pointer;" onclick="openMediaModal('${s}','${ev.type}','${ev.name}')"></video>`;
+        media = document.createElement('div');
+        media.style.cssText = 'width:100%; height:100%; cursor:pointer; position:relative; background:#000;';
+        media.innerHTML = `<video src="${ev.src}#t=0.1" preload="metadata" style="width:100%; height:100%; object-fit:cover;"></video>
+            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.8em; text-shadow:0 1px 4px #000;">▶</div>`;
+        media.onclick = () => {
+            if (ctx && ctx.ticketId) portalOpenVideoCommenter(ctx.ticketId, ev.name, ev.src, ctx.canEdit !== false);
+            else portalViewVideo(ev.src);
+        };
     } else {
-        media = `<div style="display:flex; align-items:center; justify-content:center; height:100%; cursor:pointer; font-size:0.8em; text-align:center;" onclick="openMediaModal('${s}','${ev.type}','${ev.name}')">📎<br>Anexo</div>`;
+        media = document.createElement('div');
+        media.style.cssText = 'display:flex; align-items:center; justify-content:center; height:100%; cursor:pointer; font-size:0.8em; text-align:center;';
+        media.innerHTML = '📎<br>Anexo';
+        media.onclick = () => window.open(ev.src, '_blank');
     }
-    let removeBtn = '';
+    wrap.appendChild(media);
     if (targetArray) {
-        removeBtn = `<button title="Remover" style="position:absolute; top:3px; right:3px; border:none; background:#c0392b; color:#fff; border-radius:50%; width:22px; height:22px; cursor:pointer; z-index:2;">&times;</button>`;
-    }
-    wrap.innerHTML = media + removeBtn;
-    if (targetArray) {
-        wrap.querySelector('button').onclick = (e) => {
+        const btn = document.createElement('button');
+        btn.title = 'Remover';
+        btn.innerHTML = '&times;';
+        btn.style.cssText = 'position:absolute; top:3px; right:3px; border:none; background:#c0392b; color:#fff; border-radius:50%; width:22px; height:22px; cursor:pointer; z-index:2;';
+        btn.onclick = (e) => {
             e.stopPropagation();
             const i = targetArray.findIndex(x => x.src === ev.src);
             if (i > -1) targetArray.splice(i, 1);
             wrap.remove();
         };
+        wrap.appendChild(btn);
     }
     if (uploadLabel) grid.insertBefore(wrap, uploadLabel);
     else grid.appendChild(wrap);
@@ -217,6 +230,109 @@ function portalShowRecControls() {
 function portalRemoveRecControls() {
     document.getElementById('portal-rec-bar')?.remove();
     if (portalRecState && portalRecState.timer) clearInterval(portalRecState.timer);
+}
+
+// --- VISUALIZADORES SIMPLES ------------------------------------------
+function portalViewImage(src) {
+    const id = 'portal-img-modal';
+    document.getElementById(id)?.remove();
+    const m = document.createElement('div');
+    m.id = id;
+    m.style.cssText = 'position:fixed; inset:0; z-index:16500; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; padding:20px; cursor:zoom-out;';
+    m.onclick = () => m.remove();
+    m.innerHTML = `<img src="${src}" style="max-width:96%; max-height:96%; border-radius:8px;">`;
+    document.body.appendChild(m);
+}
+
+function portalViewVideo(src) {
+    const id = 'portal-vid-modal';
+    document.getElementById(id)?.remove();
+    const m = document.createElement('div');
+    m.id = id;
+    m.style.cssText = 'position:fixed; inset:0; z-index:16500; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; padding:20px;';
+    m.onclick = (e) => { if (e.target === m) m.remove(); };
+    m.innerHTML = `<video src="${src}" controls autoplay style="max-width:96%; max-height:96%; border-radius:8px;"></video>`;
+    document.body.appendChild(m);
+}
+
+function portalFmtTime(s) {
+    s = Math.max(0, Math.floor(s || 0));
+    return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+}
+
+// --- VIDEO COMMENTER (comentar momentos do vídeo, igual aos casos de teste)
+async function portalOpenVideoCommenter(ticketId, evidenceKey, src, canEdit) {
+    const id = 'portal-video-modal';
+    document.getElementById(id)?.remove();
+    const modal = document.createElement('div');
+    modal.id = id;
+    modal.style.cssText = 'position:fixed; inset:0; z-index:16500; background:rgba(0,0,0,0.75); display:flex; align-items:center; justify-content:center; padding:14px;';
+    const keyAttr = (evidenceKey || '').replace(/"/g, '&quot;');
+    modal.innerHTML = `
+      <div style="background:#fff; border-radius:14px; width:min(1200px,98vw); max-height:94vh; overflow:hidden; display:flex; flex-direction:column;">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid #eee;">
+          <h2 style="margin:0; font-size:1.05em; color:#1c2e4a;">🎬 Comentar vídeo por momento</h2>
+          <button onclick="document.getElementById('pvc-player')?.pause(); document.getElementById('${id}').remove();" style="border:none; background:none; font-size:1.6em; cursor:pointer;">&times;</button>
+        </div>
+        <div style="display:flex; flex:1; min-height:0;">
+          <div style="flex:2; background:#000; display:flex; align-items:center; justify-content:center; min-width:0;">
+            <video id="pvc-player" src="${src}" controls style="max-width:100%; max-height:82vh;"></video>
+          </div>
+          <div style="flex:1; max-width:360px; display:flex; flex-direction:column; border-left:1px solid #eee; min-height:0;">
+            <div style="padding:10px 14px; border-bottom:1px solid #eee; font-weight:600; color:#1c2e4a; font-size:0.9em;">🕒 Comentários por momento</div>
+            <div id="pvc-list" style="flex:1; overflow-y:auto; padding:12px;"><em>Carregando...</em></div>
+            ${canEdit ? `<div style="padding:12px; border-top:1px solid #eee;">
+              <textarea id="pvc-text" placeholder="Descreva o que acontece neste momento..." style="width:100%; min-height:56px; padding:8px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;"></textarea>
+              <button onclick="portalAddVideoNote('${ticketId}','${keyAttr}')" style="border:none; background:#3b6ff0; color:#fff; border-radius:8px; padding:9px 14px; margin-top:6px; cursor:pointer; width:100%; font-weight:600;">💬 Comentar em <span id="pvc-cur">00:00</span></button>
+            </div>` : ''}
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    const v = document.getElementById('pvc-player');
+    v.addEventListener('timeupdate', () => {
+        const el = document.getElementById('pvc-cur');
+        if (el) el.textContent = portalFmtTime(v.currentTime);
+    });
+    portalLoadVideoNotes(ticketId, evidenceKey);
+}
+
+async function portalLoadVideoNotes(ticketId, evidenceKey) {
+    const client = sbGetClient();
+    const box = document.getElementById('pvc-list');
+    if (!box) return;
+    const { data: notes, error } = await client.from('support_ticket_evidence_notes')
+        .select('*').eq('ticket_id', ticketId).eq('evidence_key', evidenceKey)
+        .order('time_seconds', { ascending: true });
+    if (error) { box.innerHTML = '<span style="color:#c0392b;">' + error.message + '</span>'; return; }
+    if (!notes.length) { box.innerHTML = '<em style="color:#999;">Nenhum comentário ainda. Pause no momento e comente.</em>'; return; }
+    box.innerHTML = notes.map(n => `
+        <div style="border-bottom:1px solid #f0f0f0; padding:8px 0;">
+          <a href="#" onclick="var v=document.getElementById('pvc-player'); if(v){v.currentTime=${n.time_seconds}; v.play();} return false;"
+             style="color:#3b6ff0; font-weight:700; text-decoration:none;">▶ ${portalFmtTime(n.time_seconds)}</a>
+          <span style="font-size:0.76em; color:#999; margin-left:6px;">${n.author_name || ''}</span>
+          <div style="white-space:pre-wrap; margin-top:2px;">${(n.body || '').replace(/</g, '&lt;')}</div>
+        </div>`).join('');
+}
+
+async function portalAddVideoNote(ticketId, evidenceKey) {
+    const client = sbGetClient();
+    const session = await sbGetSession();
+    const v = document.getElementById('pvc-player');
+    const ta = document.getElementById('pvc-text');
+    const body = ta.value.trim();
+    if (!body) return;
+    const { error } = await client.from('support_ticket_evidence_notes').insert({
+        ticket_id: ticketId,
+        evidence_key: evidenceKey,
+        time_seconds: v ? v.currentTime : 0,
+        body,
+        author_id: session.user.id,
+        author_name: (typeof userSettings !== 'undefined' && userSettings.authorName) || session.user.email
+    });
+    if (error) { alert('Erro ao comentar: ' + error.message); return; }
+    ta.value = '';
+    portalLoadVideoNotes(ticketId, evidenceKey);
 }
 
 // =====================================================================
@@ -514,7 +630,7 @@ async function portalOpenTicketDetail(ticketId, internalView = false) {
 
     // Renderiza evidências do chamado (somente leitura)
     const evGrid = document.getElementById('ticket-detail-evidence');
-    (t.evidences || []).forEach(ev => portalRenderEvidence(ev, 'ticket-detail-evidence', null));
+    (t.evidences || []).forEach(ev => portalRenderEvidence(ev, 'ticket-detail-evidence', null, { ticketId: t.id, canEdit: true }));
     if (!(t.evidences||[]).length) evGrid.innerHTML = '<span style="font-size:0.85em; color:#999;">Sem evidências anexadas.</span>';
 
     await portalLoadComments(t.id, internalView);
