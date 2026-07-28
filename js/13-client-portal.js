@@ -16,6 +16,8 @@ let portalProjects = [];               // projetos acessíveis (com modules/sla 
 let portalNewEvidences = [];           // evidências do formulário de abertura
 let portalActiveTicket = null;         // ticket aberto no detalhe
 let portalAdminSelectedProject = null; // projeto selecionado no admin interno
+let portalChartInstance = null;        // instância Chart.js do gráfico do cliente
+let portalRecState = null;             // estado da gravação de tela em andamento
 
 const PORTAL_STATUSES = ['Aberto','Em Análise','Em Desenvolvimento','Aguardando Cliente','Resolvido','Fechado'];
 const PORTAL_PRIORITIES = ['Baixa','Média','Alta','Crítica'];
@@ -131,6 +133,92 @@ async function portalUploadEvidences(evidences, folder) {
     return uploaded;
 }
 
+// --- GRÁFICO (chamados por status) -----------------------------------
+function portalRenderStatusChart(tickets) {
+    const canvas = document.getElementById('portal-status-chart');
+    if (!canvas || typeof Chart === 'undefined') return;
+    const counts = PORTAL_STATUSES.map(s => tickets.filter(t => t.status === s).length);
+    const colors = PORTAL_STATUSES.map(s => STATUS_COLORS[s]);
+    if (portalChartInstance) portalChartInstance.destroy();
+    const total = counts.reduce((a, b) => a + b, 0);
+    portalChartInstance = new Chart(canvas, {
+        type: 'doughnut',
+        data: { labels: PORTAL_STATUSES, datasets: [{ data: counts, backgroundColor: colors, borderWidth: 1 }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } },
+                tooltip: { enabled: total > 0 }
+            }
+        }
+    });
+}
+
+// --- GRAVAÇÃO DE TELA (evidência, igual aos cards de teste) -----------
+function portalEnsureRecStyle() {
+    if (document.getElementById('portal-rec-style')) return;
+    const st = document.createElement('style');
+    st.id = 'portal-rec-style';
+    st.textContent = '@keyframes portalBlink{0%,100%{opacity:1}50%{opacity:0.2}}';
+    document.head.appendChild(st);
+}
+
+async function portalStartScreenRecording(targetArray, gridId) {
+    if (portalRecState) { alert('Uma gravação já está em andamento.'); return; }
+    try {
+        const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: true });
+        const chunks = [];
+        const rec = new MediaRecorder(stream, { mimeType: 'video/webm' });
+        rec.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+        rec.onstop = () => {
+            const blob = new Blob(chunks, { type: 'video/webm' });
+            const reader = new FileReader();
+            reader.onload = () => {
+                const ev = { src: reader.result, type: 'video/webm', name: `gravacao-${Date.now()}.webm` };
+                if (targetArray) { targetArray.push(ev); portalRenderEvidence(ev, gridId, targetArray); }
+            };
+            reader.readAsDataURL(blob);
+            stream.getTracks().forEach(t => t.stop());
+            portalRemoveRecControls();
+            portalRecState = null;
+        };
+        stream.getVideoTracks()[0].onended = () => { if (portalRecState) portalStopScreenRecording(); };
+        rec.start();
+        portalRecState = { rec, stream, start: Date.now(), timer: null };
+        portalShowRecControls();
+    } catch (e) {
+        console.error('[portal] gravação:', e);
+        alert('Não foi possível iniciar a gravação. Verifique as permissões do navegador.');
+        portalRecState = null;
+    }
+}
+
+function portalStopScreenRecording() {
+    if (portalRecState && portalRecState.rec.state !== 'inactive') portalRecState.rec.stop();
+}
+
+function portalShowRecControls() {
+    portalEnsureRecStyle();
+    portalRemoveRecControls();
+    const bar = document.createElement('div');
+    bar.id = 'portal-rec-bar';
+    bar.style.cssText = 'position:fixed; bottom:22px; left:50%; transform:translateX(-50%); z-index:17000; background:#c0392b; color:#fff; border-radius:30px; padding:10px 18px; display:flex; align-items:center; gap:12px; box-shadow:0 4px 16px rgba(0,0,0,0.3);';
+    bar.innerHTML = `<span style="width:12px; height:12px; border-radius:50%; background:#fff; animation:portalBlink 1s infinite;"></span>
+        <span id="portal-rec-time" style="font-variant-numeric:tabular-nums;">00:00</span>
+        <button onclick="portalStopScreenRecording()" style="border:none; background:#fff; color:#c0392b; border-radius:20px; padding:6px 14px; font-weight:700; cursor:pointer;">⏹ Parar e anexar</button>`;
+    document.body.appendChild(bar);
+    portalRecState.timer = setInterval(() => {
+        const s = Math.floor((Date.now() - portalRecState.start) / 1000);
+        const el = document.getElementById('portal-rec-time');
+        if (el) el.textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+    }, 500);
+}
+
+function portalRemoveRecControls() {
+    document.getElementById('portal-rec-bar')?.remove();
+    if (portalRecState && portalRecState.timer) clearInterval(portalRecState.timer);
+}
+
 // =====================================================================
 //  MODO CLIENTE — PORTAL EM TELA CHEIA
 // =====================================================================
@@ -147,7 +235,7 @@ async function portalEnterClientMode() {
     overlay.innerHTML = `
       <header style="background:linear-gradient(135deg,#1c2e4a,#3b6ff0); color:#fff; padding:14px 22px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 8px rgba(0,0,0,0.2);">
         <div style="display:flex; align-items:center; gap:12px;">
-          <div style="background:#000; border-radius:10px; padding:4px 10px;"><img src="logo.png" style="max-height:34px; display:block;" onerror="this.parentElement.style.display='none'"></div>
+          <div style="background:#000; border-radius:10px; padding:6px 12px;"><img src="logologin.png" style="max-height:46px; display:block;" onerror="if(this.dataset.f!=='1'){this.dataset.f='1';this.src='logo-login.png';}else if(this.dataset.f!=='2'){this.dataset.f='2';this.src='logo.png';}else{this.parentElement.style.display='none';}"></div>
           <strong style="font-size:1.15em;">🛟 Portal de Chamados</strong>
         </div>
         <div style="display:flex; align-items:center; gap:12px; font-size:0.9em;">
@@ -158,6 +246,10 @@ async function portalEnterClientMode() {
       </header>
       <main style="max-width:1000px; margin:0 auto; padding:22px;">
         <div id="portal-summary" style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:18px;"></div>
+        <div id="portal-chart-wrap" style="background:#fff; border-radius:12px; padding:16px; margin-bottom:18px; box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+          <h3 style="margin:0 0 10px; font-size:1em; color:#1c2e4a;">📊 Meus chamados por status</h3>
+          <div style="height:230px; position:relative;"><canvas id="portal-status-chart"></canvas></div>
+        </div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
           <h2 style="margin:0; font-size:1.2em; color:#1c2e4a;">Meus chamados</h2>
           <button onclick="portalOpenNewTicketModal()" style="border:none; background:#3ecf8e; color:#fff; border-radius:8px; padding:10px 16px; font-weight:600; cursor:pointer;">➕ Abrir chamado</button>
@@ -233,6 +325,8 @@ async function portalRefreshClientView() {
           <div style="font-size:0.85em; color:#666;">${label}</div>
         </div>`).join('');
 
+    portalRenderStatusChart(tickets);
+
     if (!tickets.length) { listEl.innerHTML = '<p>Você ainda não abriu nenhum chamado.</p>'; return; }
     listEl.innerHTML = tickets.map(t => portalTicketRow(t)).join('');
 }
@@ -301,6 +395,11 @@ function portalOpenNewTicketModal() {
         <textarea id="pt-desc" class="form-textarea" placeholder="Descreva o que aconteceu, passos para reproduzir, etc." style="width:100%; min-height:120px; margin:4px 0 12px; padding:10px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;"></textarea>
 
         <label style="font-weight:600; font-size:0.9em;">Evidências (imagens, vídeos, arquivos)</label>
+        <div style="display:flex; align-items:center; gap:10px; margin:6px 0;">
+          <button type="button" onclick="portalStartScreenRecording(portalNewEvidences, 'pt-evidence-grid')"
+                  style="border:none; background:#c0392b; color:#fff; border-radius:8px; padding:8px 14px; font-weight:600; cursor:pointer;">🎥 Gravar tela</button>
+          <span style="font-size:0.82em; color:#888;">ou anexe arquivo abaixo · ou cole um print com Ctrl+V</span>
+        </div>
         ${portalMakeEvidenceGrid('pt-evidence-grid', 'portalNewEvidences')}
 
         <div id="pt-status" style="min-height:20px; margin-top:10px; font-size:0.88em;"></div>
@@ -522,51 +621,137 @@ function portalInjectInternalButtons() {
     sidebar.appendChild(box);
 }
 
-async function portalOpenInternalQueue() {
-    portalModalShell('portal-queue-modal', '🛟 Fila de Chamados de Clientes', `
-        <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
-          <select id="pq-status" onchange="portalRefreshInternalQueue()" style="padding:8px; border-radius:6px; border:1px solid #ccc;">
-            <option value="">Todos os status</option>
-            ${PORTAL_STATUSES.map(s => `<option>${s}</option>`).join('')}
-          </select>
-          <input id="pq-search" oninput="portalRefreshInternalQueue()" placeholder="Buscar título..." style="flex:1; padding:8px; border-radius:6px; border:1px solid #ccc;">
-          <button onclick="portalRefreshInternalQueue()" style="border:none; background:#3b6ff0; color:#fff; border-radius:6px; padding:8px 14px; cursor:pointer;">🔄</button>
-        </div>
-        <div id="pq-list"><em>Carregando...</em></div>
-    `);
-    portalRefreshInternalQueue();
+// Injeta CSS complementar (status/prioridade que não existem no style.css)
+function portalEnsureQueueStyle() {
+    if (document.getElementById('portal-queue-style')) return;
+    const st = document.createElement('style');
+    st.id = 'portal-queue-style';
+    st.textContent = `
+      #portal-queue-view { position:fixed; inset:0; z-index:14000; background:var(--bb-bg,#f4f6fb); overflow-y:auto; padding:24px; box-sizing:border-box; }
+      .ticket-kanban-header.status-aguardando-cliente { border-color:${STATUS_COLORS['Aguardando Cliente']}; }
+      .ticket-kanban-header.status-resolvido { border-color:${STATUS_COLORS['Resolvido']}; }
+      .ticket-card.status-aguardando-cliente { border-left-color:${STATUS_COLORS['Aguardando Cliente']}; }
+      .ticket-card.status-resolvido { border-left-color:${STATUS_COLORS['Resolvido']}; }
+      .ticket-priority-badge.priority-crítica { background-color:var(--priority-critical,#c0392b); }
+      .pq-sla { font-size:0.72rem; font-weight:600; padding:2px 8px; border-radius:10px; }
+    `;
+    document.head.appendChild(st);
 }
 
-async function portalRefreshInternalQueue() {
+async function portalOpenInternalQueue() {
+    portalEnsureQueueStyle();
+    document.getElementById('portal-queue-view')?.remove();
     const client = sbGetClient();
-    const listEl = document.getElementById('pq-list');
-    if (!listEl) return;
+    const { data: projects } = await client.from('support_projects').select('id,name').order('name');
+
+    const view = document.createElement('div');
+    view.id = 'portal-queue-view';
+    view.innerHTML = `
+      <div class="ticket-management-header">
+        <h2>🛟 Fila de Chamados de Clientes</h2>
+        <p>Acompanhe, priorize e resolva os chamados abertos pelos clientes no portal.</p>
+        <button class="btn" style="background-color:#6c757d; margin-top:10px;" onclick="document.getElementById('portal-queue-view').remove()">⬅️ Voltar</button>
+      </div>
+      <div class="ticket-filters">
+        <select id="pq-project" class="form-select" onchange="portalRefreshInternalQueue()">
+          <option value="">Todos os projetos</option>
+          ${(projects||[]).map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+        </select>
+        <select id="pq-priority" class="form-select" onchange="portalRefreshInternalQueue()">
+          <option value="">Todas as prioridades</option>
+          ${PORTAL_PRIORITIES.map(p => `<option>${p}</option>`).join('')}
+        </select>
+        <select id="pq-requester" class="form-select" onchange="portalRefreshInternalQueue()">
+          <option value="">Todos os requerentes</option>
+        </select>
+        <select id="pq-status" class="form-select" onchange="portalRefreshInternalQueue()">
+          <option value="">Todos os status</option>
+          ${PORTAL_STATUSES.map(s => `<option>${s}</option>`).join('')}
+        </select>
+        <input id="pq-search" class="form-input" oninput="portalRefreshInternalQueue()" placeholder="Buscar título...">
+      </div>
+      <div id="pq-board" class="ticket-kanban-board"><em style="padding:20px;">Carregando...</em></div>`;
+    document.body.appendChild(view);
+    portalRefreshInternalQueue(true);
+}
+
+async function portalRefreshInternalQueue(populateRequesters = false) {
+    const client = sbGetClient();
+    const board = document.getElementById('pq-board');
+    if (!board) return;
+
+    const projectF = document.getElementById('pq-project')?.value || '';
+    const priorityF = document.getElementById('pq-priority')?.value || '';
+    const requesterF = document.getElementById('pq-requester')?.value || '';
     const statusF = document.getElementById('pq-status')?.value || '';
     const searchF = (document.getElementById('pq-search')?.value || '').toLowerCase();
 
-    let q = client.from('support_tickets')
-        .select('*, support_modules(name), support_projects(name)')
+    const { data: tickets, error } = await client.from('support_tickets')
+        .select('*, support_modules(name), support_projects(name), profiles(full_name)')
         .order('created_at', { ascending: false });
-    if (statusF) q = q.eq('status', statusF);
-    const { data: tickets, error } = await q;
-    if (error) { listEl.innerHTML = '<span style="color:#c0392b;">Erro: '+error.message+'</span>'; return; }
+    if (error) { board.innerHTML = '<span style="color:#c0392b; padding:20px;">Erro: '+error.message+'</span>'; return; }
 
-    const filtered = tickets.filter(t => !searchF || t.title.toLowerCase().includes(searchF));
-    if (!filtered.length) { listEl.innerHTML = '<em>Nenhum chamado.</em>'; return; }
+    // Popular o filtro de requerentes uma vez
+    if (populateRequesters) {
+        const sel = document.getElementById('pq-requester');
+        const names = [...new Set((tickets||[]).map(t => t.profiles?.full_name).filter(Boolean))].sort();
+        sel.innerHTML = '<option value="">Todos os requerentes</option>' + names.map(n => `<option>${n}</option>`).join('');
+    }
 
-    listEl.innerHTML = filtered.map(t => {
+    const filtered = (tickets||[]).filter(t =>
+        (!projectF || t.project_id === projectF) &&
+        (!priorityF || t.priority === priorityF) &&
+        (!requesterF || (t.profiles?.full_name || '') === requesterF) &&
+        (!statusF || t.status === statusF) &&
+        (!searchF || t.title.toLowerCase().includes(searchF))
+    );
+
+    // Monta as colunas do kanban (mesmas classes da tela de tickets)
+    board.innerHTML = '';
+    PORTAL_STATUSES.forEach(status => {
+        const col = document.createElement('div');
+        col.className = 'ticket-kanban-column';
+        col.dataset.status = status;
+        const statusClass = status.toLowerCase().replace(/ /g, '-');
+        const count = filtered.filter(t => t.status === status).length;
+        col.innerHTML = `<div class="ticket-kanban-header status-${statusClass}">${status} (${count})</div><div class="ticket-cards-container"></div>`;
+        // drag & drop
+        const cont = col.querySelector('.ticket-cards-container');
+        col.addEventListener('dragover', e => { e.preventDefault(); cont.classList.add('drag-over'); });
+        col.addEventListener('dragleave', () => cont.classList.remove('drag-over'));
+        col.addEventListener('drop', async e => {
+            e.preventDefault(); cont.classList.remove('drag-over');
+            const id = e.dataTransfer.getData('text/plain');
+            if (id) { await portalUpdateTicketField(id, 'status', status); portalRefreshInternalQueue(); }
+        });
+        board.appendChild(col);
+    });
+
+    filtered.forEach(t => {
+        const statusClass = t.status.toLowerCase().replace(/ /g, '-');
+        const priorityClass = (t.priority || 'Média').toLowerCase();
+        const cont = board.querySelector(`.ticket-kanban-column[data-status="${t.status}"] .ticket-cards-container`);
+        if (!cont) return;
         const sla = portalSlaState(t);
-        return `<div onclick="portalOpenTicketDetail('${t.id}', true)" style="border:1px solid #e3e3e3; border-radius:8px; padding:10px 12px; margin-bottom:8px; cursor:pointer; display:flex; align-items:center; gap:10px; border-left:5px solid ${STATUS_COLORS[t.status]||'#888'};">
-            <strong style="min-width:48px;">#${t.display_id}</strong>
-            <div style="flex:1; min-width:0;">
-              <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.title}</div>
-              <div style="font-size:0.78em; color:#888;">${t.support_projects?.name||''} · ${t.support_modules?.name||'—'}</div>
+        const card = document.createElement('div');
+        card.className = `ticket-card status-${statusClass}`;
+        card.draggable = true;
+        card.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', t.id); e.dataTransfer.effectAllowed = 'move'; });
+        card.onclick = () => portalOpenTicketDetail(t.id, true);
+        card.innerHTML = `
+            <div class="ticket-card-header">
+              <span class="ticket-id">CHAMADO #${t.display_id}</span>
+              <span class="ticket-priority-badge priority-${priorityClass}">${t.priority}</span>
             </div>
-            ${portalBadge(t.priority, PRIORITY_COLORS[t.priority])}
-            ${portalBadge(t.status, STATUS_COLORS[t.status])}
-            ${sla.badge}
-          </div>`;
-    }).join('');
+            <div class="ticket-card-title">${t.title}</div>
+            <p style="font-size:0.85em; margin-bottom:10px; color:var(--bb-txt2,#777);">${(t.description||'').substring(0,90)}${(t.description||'').length>90?'…':''}</p>
+            <div style="margin-bottom:8px;">${sla.badge}</div>
+            <div class="ticket-card-footer">
+              <span class="ticket-origin">${t.support_projects?.name||''} · ${t.support_modules?.name||'—'}</span>
+              <span class="ticket-assignee">👤 ${t.profiles?.full_name || '—'}</span>
+            </div>`;
+        cont.appendChild(card);
+    });
 }
 
 // --- ADMIN: projetos, módulos, SLA, convidar clientes ----------------
