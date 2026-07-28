@@ -456,6 +456,7 @@ function portalTicketRow(t) {
         <div style="flex:1; min-width:0;">
           <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.title}</div>
           <div style="font-size:0.8em; color:#888;">Módulo: ${mod} · ${new Date(t.created_at).toLocaleString('pt-BR')}</div>
+          ${portalSlaBar(t)}
         </div>
         ${portalBadge(t.priority, PRIORITY_COLORS[t.priority])}
         ${portalBadge(t.status, STATUS_COLORS[t.status])}
@@ -478,6 +479,33 @@ function portalSlaState(t) {
     const label = diffH >= 24 ? `${Math.floor(diffH/24)}d restantes` : `${Math.ceil(diffH)}h restantes`;
     const color = diffH < 4 ? '#e67e22' : '#1e8e3e';
     return { breached:false, badge: portalBadge('SLA: ' + label, color) };
+}
+
+// Barra de % do SLA de resolução consumido
+function portalSlaBar(t) {
+    if (!t.sla_resolution_due) return '';
+    const created = new Date(t.created_at).getTime();
+    const due = new Date(t.sla_resolution_due).getTime();
+    const done = ['Resolvido','Fechado'].includes(t.status);
+    const end = (done && t.resolved_at) ? new Date(t.resolved_at).getTime() : Date.now();
+    const total = due - created;
+    let pct = total > 0 ? ((end - created) / total) * 100 : 0;
+    const breached = pct > 100;
+    pct = Math.max(0, Math.min(100, pct));
+    let color, label;
+    if (done) {
+        color = breached ? '#e67e22' : '#1e8e3e';
+        label = breached ? 'Concluído fora do prazo' : 'Concluído dentro do SLA';
+    } else {
+        color = breached ? '#c0392b' : (pct >= 70 ? '#e67e22' : '#1e8e3e');
+        label = breached ? '⏰ SLA estourado (100%+)' : `${Math.round(pct)}% do SLA consumido`;
+    }
+    return `<div style="margin-top:6px; max-width:340px;">
+        <div style="height:7px; background:#e6e6e6; border-radius:4px; overflow:hidden;">
+          <div style="height:100%; width:${pct}%; background:${color}; transition:width 0.3s;"></div>
+        </div>
+        <div style="font-size:0.7em; color:#888; margin-top:2px;">${label}</div>
+      </div>`;
 }
 
 // --- FORMULÁRIO: ABRIR CHAMADO ---------------------------------------
@@ -595,6 +623,12 @@ async function portalOpenTicketDetail(ticketId, internalView = false) {
     const sla = portalSlaState(t);
     const mod = t.support_modules?.name || '—';
 
+    // Elegibilidade de reabertura (cliente): resolvido há menos de 2 dias
+    const nowMs = Date.now();
+    const resolvedMs = t.resolved_at ? new Date(t.resolved_at).getTime() : null;
+    const reopenEligible = (t.status === 'Resolvido') && resolvedMs && (nowMs - resolvedMs) < 2 * 24 * 36e5;
+    const definitivelyClosed = (t.status === 'Fechado') || (t.status === 'Resolvido' && resolvedMs && (nowMs - resolvedMs) >= 2 * 24 * 36e5);
+
     // Bloco de controles: só interno muda status/prioridade
     const controls = internalView ? `
         <div style="display:flex; gap:10px; flex-wrap:wrap; margin:10px 0;">
@@ -608,8 +642,16 @@ async function portalOpenTicketDetail(ticketId, internalView = false) {
             </select></label>
           <label style="font-size:0.85em;">Responsável
             <input value="${t.assignee||''}" onchange="portalUpdateTicketField('${t.id}','assignee',this.value)" placeholder="Ninguém" style="display:block; padding:8px; border-radius:6px; border:1px solid #ccc;"></label>
-        </div>` : `
-        <div style="margin:8px 0;">${portalBadge(t.status, STATUS_COLORS[t.status])} ${portalBadge(t.priority, PRIORITY_COLORS[t.priority])} ${sla.badge}</div>`;
+        </div>
+        ${portalSlaBar(t)}` : `
+        <div style="margin:8px 0;">${portalBadge(t.status, STATUS_COLORS[t.status])} ${portalBadge(t.priority, PRIORITY_COLORS[t.priority])} ${sla.badge}</div>
+        ${portalSlaBar(t)}
+        ${reopenEligible ? `<div style="margin:10px 0; padding:10px; background:#eef7ff; border-radius:8px; font-size:0.85em;">
+            Seu chamado foi resolvido. Se o problema persistir, você pode reabri-lo.
+            <button onclick="portalReopenTicket('${t.id}')" style="border:none; background:#e67e22; color:#fff; border-radius:8px; padding:8px 14px; margin-top:6px; cursor:pointer; font-weight:600; display:block;">🔄 Reabrir chamado</button>
+            <div style="font-size:0.9em; color:#888; margin-top:4px;">Após 2 dias sem reabertura, o chamado será encerrado definitivamente.</div>
+          </div>` : ''}
+        ${definitivelyClosed ? `<div style="margin:10px 0; padding:10px; background:#f0f0f0; border-radius:8px; font-size:0.85em; color:#666;">🔒 Chamado encerrado. O prazo de reabertura expirou.</div>` : ''}`;
 
     portalModalShell('ticket-detail-modal', `Chamado #${t.display_id}`, `
         <h3 style="margin:0 0 4px;">${t.title}</h3>
@@ -622,7 +664,10 @@ async function portalOpenTicketDetail(ticketId, internalView = false) {
         <div id="ticket-comments" style="max-height:260px; overflow-y:auto; margin-bottom:12px;"></div>
 
         <textarea id="ptc-body" placeholder="Escreva uma resposta..." style="width:100%; min-height:70px; padding:10px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;"></textarea>
-        ${internalView ? `<label style="font-size:0.82em; display:block; margin:6px 0;"><input type="checkbox" id="ptc-internal"> Nota interna (o cliente NÃO vê)</label>` : ''}
+        ${internalView ? `<div style="margin:6px 0; display:flex; gap:16px; flex-wrap:wrap;">
+            <label style="font-size:0.82em;"><input type="checkbox" id="ptc-internal"> 🔒 Nota interna (o cliente NÃO vê)</label>
+            <label style="font-size:0.82em;"><input type="checkbox" id="ptc-resolution"> ✅ Marcar como resolução (fecha o chamado)</label>
+          </div>` : ''}
         <div style="text-align:right; margin-top:8px;">
           <button onclick="portalAddComment('${t.id}', ${internalView})" style="border:none; background:#3b6ff0; color:#fff; border-radius:8px; padding:9px 18px; font-weight:600; cursor:pointer;">Enviar resposta</button>
         </div>
@@ -647,11 +692,13 @@ async function portalLoadComments(ticketId, internalView) {
 
     box.innerHTML = comments.map(c => {
         const mine = c.author_role === 'interno';
-        const bg = c.internal_note ? '#fff6e0' : (mine ? '#eaf1ff' : '#f0f0f0');
+        let bg = c.internal_note ? '#fff6e0' : (mine ? '#eaf1ff' : '#f0f0f0');
+        let border = '';
+        let tag = c.internal_note ? ' 🔒 nota interna' : '';
+        if (c.is_resolution) { bg = '#e6f7ea'; border = 'border:1px solid #1e8e3e;'; tag = ' ✅ resolução'; }
         const align = mine ? 'margin-left:auto;' : '';
-        const tag = c.internal_note ? ' 🔒 nota interna' : '';
-        return `<div style="max-width:82%; ${align} background:${bg}; border-radius:10px; padding:9px 12px; margin-bottom:8px;">
-            <div style="font-size:0.75em; color:#888; margin-bottom:2px;">${c.author_name||c.author_role}${tag} · ${new Date(c.created_at).toLocaleString('pt-BR')}</div>
+        return `<div style="max-width:82%; ${align} background:${bg}; ${border} border-radius:10px; padding:9px 12px; margin-bottom:8px;">
+            <div style="font-size:0.75em; color:${c.is_resolution ? '#1e8e3e' : '#888'}; margin-bottom:2px; font-weight:${c.is_resolution ? '700' : '400'};">${c.author_name||c.author_role}${tag} · ${new Date(c.created_at).toLocaleString('pt-BR')}</div>
             <div style="white-space:pre-wrap;">${c.body.replace(/</g,'&lt;')}</div>
           </div>`;
     }).join('');
@@ -664,20 +711,37 @@ async function portalAddComment(ticketId, internalView) {
     const body = document.getElementById('ptc-body').value.trim();
     if (!body) return;
     const internalNote = internalView && document.getElementById('ptc-internal')?.checked;
+    const isResolution = internalView && document.getElementById('ptc-resolution')?.checked;
 
     const { error } = await client.from('support_ticket_comments').insert({
         ticket_id: ticketId,
         author_id: session.user.id,
-        author_name: (userSettings && userSettings.authorName) || session.user.email,
+        author_name: (typeof userSettings !== 'undefined' && userSettings.authorName) || session.user.email,
         author_role: internalView ? 'interno' : 'cliente',
         body,
-        internal_note: !!internalNote
+        internal_note: !!internalNote && !isResolution,
+        is_resolution: !!isResolution
     });
     if (error) { alert('Erro ao comentar: ' + error.message); return; }
+
+    // Marcar como resolução também move o chamado para "Resolvido"
+    if (isResolution) {
+        await client.from('support_tickets').update({ status: 'Resolvido' }).eq('id', ticketId);
+    }
+
     document.getElementById('ptc-body').value = '';
-    await portalLoadComments(ticketId, internalView);
+    if (isResolution) { portalCloseModal('ticket-detail-modal'); portalOpenTicketDetail(ticketId, internalView); }
+    else await portalLoadComments(ticketId, internalView);
     // Atualiza a lista de origem
     if (internalView) portalRefreshInternalQueue(); else portalRefreshClientView();
+}
+
+async function portalReopenTicket(ticketId) {
+    const client = sbGetClient();
+    const { error } = await client.rpc('reopen_ticket', { p_ticket: ticketId });
+    if (error) { alert('Não foi possível reabrir: ' + error.message); return; }
+    portalCloseModal('ticket-detail-modal');
+    portalRefreshClientView();
 }
 
 async function portalUpdateTicketField(ticketId, field, value) {
@@ -862,6 +926,7 @@ async function portalRefreshInternalQueue(populateRequesters = false) {
             <div class="ticket-card-title">${t.title}</div>
             <p style="font-size:0.85em; margin-bottom:10px; color:var(--bb-txt2,#777);">${(t.description||'').substring(0,90)}${(t.description||'').length>90?'…':''}</p>
             <div style="margin-bottom:8px;">${sla.badge}</div>
+            ${portalSlaBar(t)}
             <div class="ticket-card-footer">
               <span class="ticket-origin">${t.support_projects?.name||''} · ${t.support_modules?.name||'—'}</span>
               <span class="ticket-assignee">👤 ${t.profiles?.full_name || '—'}</span>
