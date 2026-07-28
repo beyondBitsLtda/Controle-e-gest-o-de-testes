@@ -19,6 +19,7 @@ let portalAdminSelectedProject = null; // projeto selecionado no admin interno
 let portalChartInstance = null;        // instância Chart.js do gráfico do cliente
 let portalRecState = null;             // estado da gravação de tela em andamento
 let portalModuleFilter = '';           // filtro de categoria (módulo) do cliente
+let portalStatusFilter = '';           // filtro de status do cliente
 let portalViewAllMode = false;         // ver todos os chamados do projeto (se permitido)
 let portalReplyEvidences = [];         // evidências anexadas a uma resposta/comentário
 let portalClientAccess = [];           // linhas de acesso do cliente (com can_view_all)
@@ -425,6 +426,9 @@ async function portalEnterClientMode() {
           <h2 style="margin:0; font-size:1.2em; color:#1c2e4a;" id="portal-list-title">Meus chamados</h2>
           <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
             <span id="portal-viewall-wrap"></span>
+            <select id="portal-status-filter" onchange="portalStatusFilter=this.value; portalRefreshClientView()" style="padding:8px; border-radius:6px; border:1px solid #ccc; font-size:0.85em;">
+              <option value="">Todos os status</option>
+            </select>
             <select id="portal-cat-filter" onchange="portalModuleFilter=this.value; portalRefreshClientView()" style="padding:8px; border-radius:6px; border:1px solid #ccc; font-size:0.85em;">
               <option value="">Todas as categorias</option>
             </select>
@@ -497,8 +501,15 @@ async function portalRefreshClientView() {
         catSel.innerHTML = '<option value="">Todas as categorias</option>' +
             (proj.modules || []).map(m => `<option value="${m.id}" ${portalModuleFilter===m.id?'selected':''}>${m.name}</option>`).join('');
     }
+    // Alimenta o seletor de status
+    const stSel = document.getElementById('portal-status-filter');
+    if (stSel) {
+        stSel.innerHTML = '<option value="">Todos os status</option>' +
+            PORTAL_STATUSES.map(s => `<option value="${s}" ${portalStatusFilter===s?'selected':''}>${s}</option>`).join('');
+    }
 
-    // Toggle "Meus / Todos do projeto" só aparece se tiver permissão
+    // Toggle "Ver todos do projeto" — só aparece se tiver permissão.
+    // Desmarcado (padrão) = só os chamados que o próprio usuário criou.
     const vaWrap = document.getElementById('portal-viewall-wrap');
     if (vaWrap) {
         vaWrap.innerHTML = proj.canViewAll ? `
@@ -520,8 +531,11 @@ async function portalRefreshClientView() {
     const { data: allTickets, error } = await q;
     if (error) { listEl.innerHTML = '<span style="color:#c0392b;">Erro: ' + error.message + '</span>'; return; }
 
-    // Filtro de categoria (módulo)
-    const tickets = (allTickets || []).filter(t => !portalModuleFilter || t.module_id === portalModuleFilter);
+    // Filtros de categoria (módulo) e status
+    const tickets = (allTickets || []).filter(t =>
+        (!portalModuleFilter || t.module_id === portalModuleFilter) &&
+        (!portalStatusFilter || t.status === portalStatusFilter)
+    );
 
     // Cards de resumo (reagem ao modo e ao filtro)
     const open = tickets.filter(t => t.status === 'Aberto').length;
