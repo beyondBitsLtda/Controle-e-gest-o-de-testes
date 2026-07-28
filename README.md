@@ -11,7 +11,7 @@ Uma aplicação web client-side interna para gerenciar, documentar e acompanhar 
 
 O "Controle de Plano de Testes" foi desenvolvido como uma ferramenta interna para auxiliar nossas equipes de QA e desenvolvimento na organização e acompanhamento de casos de teste. Ele opera 100% no navegador, permitindo um controle ágil e a documentação de evidências, com a possibilidade de salvar e carregar históricos de testes.
 
-## ✨ Funcionalidades
+## ✨ Funcionalidadesssdsdsdasdsdsd
 
 * **➕ Gerenciamento Dinâmico:** Adicione, edite e exclua casos de teste em tempo real.
 * **🎥 Evidências Multimídia:** Grave a tela ou tire capturas de tela diretamente da aplicação e anexe-as a um caso de teste.
