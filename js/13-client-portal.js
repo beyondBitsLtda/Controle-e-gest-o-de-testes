@@ -589,15 +589,18 @@ async function portalSubmitTicket() {
             uploaded = await portalUploadEvidences(evidences, folder);
         }
 
-        const { error } = await client.from('support_tickets').insert({
+        const { data: created, error } = await client.from('support_tickets').insert({
             project_id: proj.id,
             module_id: moduleId,
             opened_by: session.user.id,
             title, description: desc, priority,
             evidences,
             storage_folder: uploaded > 0 ? folder : null
-        });
+        }).select().single();
         if (error) throw new Error(error.message);
+
+        // Notifica por e-mail (não bloqueia se falhar)
+        portalNotifyTicket('INSERT', created, null);
 
         portalCloseModal('novo-chamado-modal');
         await portalRefreshClientView();
