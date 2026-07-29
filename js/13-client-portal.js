@@ -53,7 +53,35 @@ async function portalOnAuth() {
             portalInjectInternalButtons();
         }
     } catch (e) { console.error('[portal] erro em portalOnAuth:', e); }
+    finally { portalRemoveBoot(); }
 }
+
+// Splash imediato: evita o "flash" da tela de testes antes de decidir a rota.
+function portalBootSplash() {
+    if (document.getElementById('portal-boot')) return;
+    if (!document.getElementById('portal-boot-style')) {
+        const st = document.createElement('style');
+        st.id = 'portal-boot-style';
+        st.textContent = '@keyframes portalSpin{to{transform:rotate(360deg)}}';
+        document.head.appendChild(st);
+    }
+    const s = document.createElement('div');
+    s.id = 'portal-boot';
+    s.style.cssText = 'position:fixed; inset:0; z-index:19000; background:linear-gradient(135deg,#1c2e4a,#3b6ff0); display:flex; align-items:center; justify-content:center;';
+    s.innerHTML = '<div style="width:46px; height:46px; border:4px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:portalSpin 0.8s linear infinite;"></div>';
+    document.body.appendChild(s);
+}
+function portalRemoveBoot() { document.getElementById('portal-boot')?.remove(); }
+
+// Se já existe sessão salva, mostra o splash IMEDIATAMENTE (antes do app renderizar).
+(function portalMaybeBoot() {
+    try {
+        const hasSession = Object.keys(localStorage).some(k => k.includes('-auth-token'));
+        if (!hasSession) return;
+        if (document.body) portalBootSplash();
+        else document.addEventListener('DOMContentLoaded', portalBootSplash);
+    } catch (e) { /* ignore */ }
+})();
 
 function portalExit() {
     portalRole = null;
@@ -403,9 +431,9 @@ async function portalEnterClientMode() {
 
     const overlay = document.createElement('div');
     overlay.id = 'client-portal';
-    overlay.style.cssText = 'position:fixed; inset:0; z-index:15000; background:#eef1f6; overflow-y:auto; font-family:inherit;';
+    overlay.style.cssText = 'position:fixed; inset:0; z-index:15000; background:var(--bb-bg,#eef0f4); overflow-y:auto; font-family:inherit; color:var(--bb-txt1,#1a1d26);';
     overlay.innerHTML = `
-      <header style="background:linear-gradient(135deg,#1c2e4a,#3b6ff0); color:#fff; padding:14px 22px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 8px rgba(0,0,0,0.2);">
+      <header style="background:linear-gradient(135deg,var(--bb-copper-d,#2a55c4),var(--bb-copper,#3b6ff0)); color:#fff; padding:14px 22px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 10px rgba(0,0,0,0.18);">
         <div style="display:flex; align-items:center; gap:12px;">
           <div style="background:#000; border-radius:10px; padding:6px 12px;"><img src="logologin.png" style="max-height:46px; display:block;" onerror="if(this.dataset.f!=='1'){this.dataset.f='1';this.src='logo-login.png';}else if(this.dataset.f!=='2'){this.dataset.f='2';this.src='logo.png';}else{this.parentElement.style.display='none';}"></div>
           <strong style="font-size:1.15em;">🛟 Portal de Chamados</strong>
@@ -414,32 +442,32 @@ async function portalEnterClientMode() {
           <span id="portal-project-selector"></span>
           <span>👤 ${email}</span>
           <button onclick="portalOpenChangePassword()" style="border:none; background:rgba(255,255,255,0.2); color:#fff; border-radius:6px; padding:6px 12px; cursor:pointer;">🔑 Trocar senha</button>
-          <button onclick="sbSignOut()" style="border:none; background:#c0392b; color:#fff; border-radius:6px; padding:6px 12px; cursor:pointer;">Sair</button>
+          <button onclick="sbSignOut()" style="border:none; background:var(--priority-high,#e5484d); color:#fff; border-radius:6px; padding:6px 12px; cursor:pointer;">Sair</button>
         </div>
       </header>
-      <main style="max-width:1000px; margin:0 auto; padding:22px;">
+      <main style="max-width:1040px; margin:0 auto; padding:22px;">
         <div id="portal-summary" style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:18px;"></div>
-        <div id="portal-chart-wrap" style="background:#fff; border-radius:12px; padding:16px; margin-bottom:18px; box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-          <h3 style="margin:0 0 10px; font-size:1em; color:#1c2e4a;">📊 Meus chamados por status</h3>
+        <div id="portal-chart-wrap" style="background:var(--bb-surface,#fff); border:1px solid var(--bb-border,#e5e8ef); border-radius:12px; padding:16px; margin-bottom:18px; box-shadow:0 1px 4px rgba(0,0,0,0.05);">
+          <h3 style="margin:0 0 10px; font-size:1em; color:var(--bb-txt1,#1a1d26);">📊 Meus chamados por status</h3>
           <div style="height:230px; position:relative;"><canvas id="portal-status-chart"></canvas></div>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
-          <h2 style="margin:0; font-size:1.2em; color:#1c2e4a;" id="portal-list-title">Meus chamados</h2>
+          <h2 style="margin:0; font-size:1.2em; color:var(--bb-txt1,#1a1d26);" id="portal-list-title">Meus chamados</h2>
           <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
             <span id="portal-viewall-wrap"></span>
-            <select id="portal-status-filter" onchange="portalStatusFilter=this.value; portalRefreshClientView()" style="padding:8px; border-radius:6px; border:1px solid #ccc; font-size:0.85em;">
+            <select id="portal-status-filter" onchange="portalStatusFilter=this.value; portalRefreshClientView()" class="form-select" style="padding:8px; border-radius:6px; border:1px solid var(--bb-border,#ccc); font-size:0.85em;">
               <option value="">Todos os status</option>
             </select>
-            <select id="portal-cat-filter" onchange="portalModuleFilter=this.value; portalRefreshClientView()" style="padding:8px; border-radius:6px; border:1px solid #ccc; font-size:0.85em;">
+            <select id="portal-cat-filter" onchange="portalModuleFilter=this.value; portalRefreshClientView()" class="form-select" style="padding:8px; border-radius:6px; border:1px solid var(--bb-border,#ccc); font-size:0.85em;">
               <option value="">Todas as categorias</option>
             </select>
-            <select id="portal-sort" onchange="portalSortBy=this.value; portalRefreshClientView()" style="padding:8px; border-radius:6px; border:1px solid #ccc; font-size:0.85em;">
+            <select id="portal-sort" onchange="portalSortBy=this.value; portalRefreshClientView()" class="form-select" style="padding:8px; border-radius:6px; border:1px solid var(--bb-border,#ccc); font-size:0.85em;">
               <option value="recentes">Mais recentes</option>
               <option value="antigos">Mais antigos</option>
               <option value="vencimento">Vencimento do SLA</option>
               <option value="prioridade">Prioridade</option>
             </select>
-            <button onclick="portalOpenNewTicketModal()" style="border:none; background:#3ecf8e; color:#fff; border-radius:8px; padding:10px 16px; font-weight:600; cursor:pointer;">➕ Abrir chamado</button>
+            <button onclick="portalOpenNewTicketModal()" style="border:none; background:var(--bb-copper,#3b6ff0); color:#fff; border-radius:8px; padding:10px 16px; font-weight:600; cursor:pointer;">➕ Abrir chamado</button>
           </div>
         </div>
         <div id="portal-ticket-list"><em>Carregando...</em></div>
@@ -566,9 +594,9 @@ async function portalRefreshClientView() {
         ['Abertos', open, '#c0392b'], ['Em andamento', inProg, '#2980b9'],
         ['Resolvidos', done, '#1e8e3e'], ['Fora do SLA', breached, '#e67e22']
     ].map(([label,val,color]) => `
-        <div style="background:#fff; border-radius:12px; padding:16px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,0.08); border-top:4px solid ${color};">
+        <div style="background:var(--bb-surface,#fff); border:1px solid var(--bb-border,#e5e8ef); border-radius:12px; padding:16px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,0.05); border-top:4px solid ${color};">
           <div style="font-size:2em; font-weight:700; color:${color};">${val}</div>
-          <div style="font-size:0.85em; color:#666;">${label}</div>
+          <div style="font-size:0.85em; color:var(--bb-txt2,#6b7280);">${label}</div>
         </div>`).join('');
 
     // Gráfico reage ao conjunto filtrado
@@ -583,11 +611,11 @@ function portalTicketRow(t, showRequester) {
     const mod = t.support_modules?.name || '—';
     const who = showRequester ? ` · 👤 ${t.profiles?.full_name || '—'}` : '';
     return `
-      <div onclick="portalOpenTicketDetail('${t.id}')" style="background:#fff; border-radius:10px; padding:14px 16px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.08); cursor:pointer; display:flex; align-items:center; gap:14px; border-left:5px solid ${STATUS_COLORS[t.status]||'#888'};">
-        <div style="font-weight:700; color:#1c2e4a; min-width:56px;">#${t.display_id}</div>
+      <div onclick="portalOpenTicketDetail('${t.id}')" style="background:var(--bb-surface,#fff); border:1px solid var(--bb-border,#e5e8ef); border-radius:10px; padding:14px 16px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.05); cursor:pointer; display:flex; align-items:center; gap:14px; border-left:5px solid ${STATUS_COLORS[t.status]||'#888'};">
+        <div style="font-weight:700; color:var(--bb-copper,#1c2e4a); min-width:56px;">#${t.display_id}</div>
         <div style="flex:1; min-width:0;">
-          <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.title}</div>
-          <div style="font-size:0.8em; color:#888;">Módulo: ${mod} · ${new Date(t.created_at).toLocaleString('pt-BR')}${who}</div>
+          <div style="font-weight:600; color:var(--bb-txt1,#1a1d26); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.title}</div>
+          <div style="font-size:0.8em; color:var(--bb-txt2,#888);">Módulo: ${mod} · ${new Date(t.created_at).toLocaleString('pt-BR')}${who}</div>
           ${portalSlaBar(t)}
         </div>
         ${portalBadge(t.priority, PRIORITY_COLORS[t.priority])}
@@ -997,10 +1025,10 @@ function portalModalShell(id, titleText, innerHTML) {
     modal.style.cssText = 'position:fixed; inset:0; z-index:16000; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; padding:16px;';
     modal.onclick = (e) => { if (e.target === modal) portalCloseModal(id); };
     modal.innerHTML = `
-      <div style="background:#fff; border-radius:14px; width:min(680px,96vw); max-height:92vh; overflow-y:auto; padding:22px;">
+      <div style="background:var(--bb-surface,#fff); border:1px solid var(--bb-border,#e5e8ef); border-radius:14px; width:min(680px,96vw); max-height:92vh; overflow-y:auto; padding:22px; color:var(--bb-txt1,#1a1d26);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-          <h2 style="margin:0; font-size:1.2em; color:#1c2e4a;">${titleText}</h2>
-          <button onclick="portalCloseModal('${id}')" style="border:none; background:none; font-size:1.5em; cursor:pointer;">&times;</button>
+          <h2 style="margin:0; font-size:1.2em; color:var(--bb-txt1,#1a1d26);">${titleText}</h2>
+          <button onclick="portalCloseModal('${id}')" style="border:none; background:none; font-size:1.5em; cursor:pointer; color:var(--bb-txt2,#888);">&times;</button>
         </div>
         ${innerHTML}
       </div>`;
