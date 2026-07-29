@@ -8,11 +8,14 @@
 // Requer a migração sql/supabase-update-v2.sql (coluna project_name).
 // =====================================================================
 
-
 // --- CONFIGURAÇÃO -----------------------------------------------------
-// Opcional: preencha para fixar a conexão no código (equipe não configura nada)
-const SB_DEFAULT_URL = 'https://wilxxkkqgoigmrdgufej.supabase.co';      // ex: 'https://xxxxxxxx.supabase.co'
-const SB_DEFAULT_ANON_KEY = 'sb_publishable_4aAvHuCLifDoik3w-ECc7Q_8L6jxaXn'; // ex: 'sb_publishable_...'
+// Conexão FIXA no código: ninguém precisa configurar nada.
+// A URL e a anon/publishable key são PÚBLICAS por design (o que protege os
+// dados é o RLS). NUNCA coloque aqui a service_role key.
+const SB_DEFAULT_URL = 'https://wilxxkkqgoigmrdgufej.supabase.co';
+// >>> COLE AQUI a sua Publishable key (Settings → API Keys → Publishable):
+const SB_DEFAULT_ANON_KEY = 'sb_publishable_4aAvHuCLifDoik3w-ECc7Q_8L6jxaXn';
+
 const SB_CONFIG_KEY = 'testAppSupabaseConfig';
 const SB_BUCKET = 'evidencias';
 const SB_INLINE_LIMIT = 300000;         // data-URI acima disso vai para o Storage
@@ -46,7 +49,7 @@ function sbGetClient() {
     }
     const cfg = sbLoadConfig();
     if (!cfg.url || !cfg.anonKey) {
-        sbLoginStatus('warn', 'Primeiro acesso: clique em ⚙️ e configure a conexão com o Supabase.');
+        sbLoginStatus('warn', 'Primeiro acesso: clique em e configure a conexão com o Supabase.');
         return null;
     }
     try {
@@ -54,7 +57,7 @@ function sbGetClient() {
         return sbClient;
     } catch (e) {
         console.error('Erro ao criar cliente Supabase:', e);
-        sbLoginStatus('error', 'URL ou chave inválida. Revise a configuração (⚙️).');
+        sbLoginStatus('error', 'URL ou chave inválida. Revise a configuração ().');
         return null;
     }
 }
@@ -139,8 +142,8 @@ function sbInjectLoginScreen() {
                  style="width:100%; padding:11px 42px 11px 12px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;"
                  onkeydown="if(event.key==='Enter') sbSignIn()">
           <button type="button" title="Mostrar/ocultar senha"
-                  onclick="var i=document.getElementById('sb-login-password'); i.type=i.type==='password'?'text':'password'; this.textContent=i.type==='password'?'👁️':'🙈';"
-                  style="position:absolute; right:8px; top:50%; transform:translateY(-50%); border:none; background:none; cursor:pointer; font-size:1.15em; line-height:1;">👁️</button>
+                  onclick="var i=document.getElementById('sb-login-password'); i.type=i.type==='password'?'text':'password'; this.textContent=i.type==='password'?'ver':'ocultar';"
+                  style="position:absolute; right:8px; top:50%; transform:translateY(-50%); border:none; background:none; cursor:pointer; font-size:0.8em; color:#3b6ff0; font-weight:600; line-height:1;">ver</button>
         </div>
 
         <button class="btn" style="background-color:#3ecf8e; width:100%; padding:11px; font-size:1em; margin-bottom:8px;" onclick="sbSignIn()">Entrar</button>
@@ -187,10 +190,10 @@ function sbUpdateUserChip() {
         sidebar.appendChild(chip);
     }
     if (sbSession && sbSession.user) {
-        chip.innerHTML = `<span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">👤 ${sbSession.user.email}</span>
+        chip.innerHTML = `<span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${sbSession.user.email}</span>
             <button onclick="sbSignOut()" style="border:none; background:#c0392b; color:#fff; border-radius:6px; padding:3px 8px; cursor:pointer; font-size:0.85em; flex-shrink:0;">Sair</button>`;
     } else {
-        chip.innerHTML = `<span style="color:#999;">🔌 Modo offline</span>
+        chip.innerHTML = `<span style="color:#999;">Modo offline</span>
             <button onclick="sbShowLoginScreen()" style="border:none; background:#3ecf8e; color:#fff; border-radius:6px; padding:3px 8px; cursor:pointer; font-size:0.85em; flex-shrink:0;">Entrar</button>`;
     }
 }
@@ -303,12 +306,12 @@ async function sbSaveRunToCloud() {
         else ({ error: dbErr } = await client.from('cloud_runs').insert(row));
         if (dbErr) throw new Error(dbErr.message);
 
-        sbSetStatus('ok', `✅ Run "${runName}" salva no projeto "${projectName}" (${uploaded} mídia(s) no Storage).`);
+        sbSetStatus('ok', `Run "${runName}" salva no projeto "${projectName}" (${uploaded} mídia(s) no Storage).`);
         document.getElementById('sb-run-name').value = '';
         sbListRuns();
     } catch (error) {
         console.error('Erro ao salvar na nuvem:', error);
-        sbSetStatus('error', '❌ ' + error.message);
+        sbSetStatus('error', '' + error.message);
     }
 }
 
@@ -349,7 +352,7 @@ async function sbListRuns() {
         const header = document.createElement('div');
         header.style.cssText = 'display:flex; align-items:center; justify-content:space-between; padding:10px 12px; background:#eef2fb; border:1px solid #ccd6ee; border-radius:8px; margin-bottom:4px; cursor:pointer; user-select:none;';
         header.innerHTML = `
-            <strong>📁 ${projectName} <span style="font-weight:normal; color:#666; font-size:0.85em;">(${runs.length} run${runs.length > 1 ? 's' : ''})</span></strong>
+            <strong>${projectName} <span style="font-weight:normal; color:#666; font-size:0.85em;">(${runs.length} run${runs.length > 1 ? 's' : ''})</span></strong>
             <span>${isOpen ? '▾' : '▸'}</span>`;
         header.onclick = () => { sbExpandedProjects[projectName] = !isOpen; sbListRuns(); };
         container.appendChild(header);
@@ -364,7 +367,7 @@ async function sbListRuns() {
                 item.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:8px; padding:7px 10px; border:1px solid #e0e0e0; border-radius:8px; margin-bottom:4px; background:#fafafa;';
                 item.innerHTML = `
                     <div style="min-width:0;">
-                        <span style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">▶️ ${run.run_name}</span>
+                        <span style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">▶${run.run_name}</span>
                         <small style="color:#777;">${run.author || ''} · ${when} · ${run.media_count || 0} mídia(s)</small>
                     </div>
                     <div style="display:flex; gap:6px; flex-shrink:0;">
@@ -406,11 +409,11 @@ async function sbLoadCloudRun(runId) {
         if (typeof renderGlobalTagFilter === 'function') renderGlobalTagFilter();
         if (currentView === 'kanban' && typeof renderKanbanBoard === 'function') renderKanbanBoard();
 
-        sbSetStatus('ok', `✅ Run "${run.run_name}" (projeto "${run.project_name}") carregada.`);
+        sbSetStatus('ok', `Run "${run.run_name}" (projeto "${run.project_name}") carregada.`);
         sbCloseModal();
     } catch (error) {
         console.error('Erro ao carregar da nuvem:', error);
-        sbSetStatus('error', '❌ ' + error.message);
+        sbSetStatus('error', '' + error.message);
     }
 }
 
@@ -433,7 +436,7 @@ async function sbDeleteCloudRun(runId, runName) {
         sbListRuns();
     } catch (error) {
         console.error('Erro ao excluir run:', error);
-        sbSetStatus('error', '❌ ' + error.message);
+        sbSetStatus('error', '' + error.message);
     }
 }
 
@@ -470,7 +473,7 @@ function sbInjectUI() {
         btn.id = 'sb-open-btn';
         btn.className = 'btn';
         btn.style.backgroundColor = '#3ecf8e';
-        btn.textContent = '☁️ Projetos e Runs';
+        btn.textContent = 'Projetos e Runs';
         btn.onclick = sbOpenModal;
         const hr = document.createElement('hr');
         hr.className = 'sidebar-divider';
@@ -488,28 +491,28 @@ function sbInjectUI() {
     modal.innerHTML = `
       <div style="background:#fff; border-radius:12px; width:min(640px, 94vw); max-height:88vh; overflow-y:auto; padding:22px; box-shadow:0 10px 40px rgba(0,0,0,0.25);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-            <h2 style="margin:0; font-size:1.2em;">☁️ Projetos e Runs na Nuvem</h2>
+            <h2 style="margin:0; font-size:1.2em;">Projetos e Runs na Nuvem</h2>
             <button onclick="sbCloseModal()" style="border:none; background:none; font-size:1.5em; cursor:pointer;">&times;</button>
         </div>
         <p style="margin:0 0 8px; font-size:0.85em; color:#777;">Conectado como <strong id="sb-cloud-user"></strong></p>
         <div id="sb-status" style="min-height:20px; font-size:0.9em; margin-bottom:10px;"></div>
 
         <div style="padding:12px; border:1px solid #d9e2f5; background:#f5f8ff; border-radius:10px; margin-bottom:16px;">
-            <h3 style="margin:0 0 8px; font-size:1em;">💾 Salvar run atual</h3>
+            <h3 style="margin:0 0 8px; font-size:1em;">Salvar run atual</h3>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
                 <input type="text" id="sb-project-name" class="form-input" list="sb-project-datalist"
                        placeholder="Projeto (ex: Fluxo de Caixa)" style="flex:1; min-width:160px;">
                 <datalist id="sb-project-datalist"></datalist>
                 <input type="text" id="sb-run-name" class="form-input"
                        placeholder="Nome da run (ex: Sprint 22 - Regressão)" style="flex:1.4; min-width:180px;">
-                <button class="btn" style="background-color:#3ecf8e;" onclick="sbSaveRunToCloud()">💾 Salvar</button>
+                <button class="btn" style="background-color:#3ecf8e;" onclick="sbSaveRunToCloud()">Salvar</button>
             </div>
             <small style="color:#666;">Escolha um projeto existente na lista ou digite um novo nome para criá-lo. Salvar com o mesmo projeto + run sobrescreve.</small>
         </div>
 
-        <h3 style="margin:0 0 8px; font-size:1em;">📁 Projetos</h3>
+        <h3 style="margin:0 0 8px; font-size:1em;">Projetos</h3>
         <div id="sb-runs-list"><em>Carregando...</em></div>
-        <button class="btn" style="background-color:#3b6ff0; padding:5px 12px; font-size:0.85em; margin-top:8px;" onclick="sbListRuns()">🔄 Atualizar</button>
+        <button class="btn" style="background-color:#3b6ff0; padding:5px 12px; font-size:0.85em; margin-top:8px;" onclick="sbListRuns()">Atualizar</button>
       </div>`;
     document.body.appendChild(modal);
 }
