@@ -354,9 +354,18 @@
             <div class="panel-section settings-section">
                 <h3>Configurações de Aparência</h3>
                 <div class="setting-toggle">
-                    <label for="toggle-dark-mode">Ativar Modo Noturno</label>
-                    <label class="switch"><input type="checkbox" id="toggle-dark-mode"><span class="slider round"></span></label>
+                    <label for="theme-select">Tema de cores</label>
+                    <select id="theme-select" onchange="portalApplyTheme(this.value)" style="padding:8px 10px; border-radius:8px; border:1px solid var(--bb-border,#ccc); background:var(--bb-surface,#fff); color:var(--bb-txt1,#222); font-size:0.95em;">
+                        <option value="claro">Claro</option>
+                        <option value="escuro">Escuro</option>
+                        <option value="sepia">Sépia</option>
+                        <option value="terminal">Terminal</option>
+                        <option value="oceano">Oceano</option>
+                        <option value="roza">Roza</option>
+                    </select>
                 </div>
+                <!-- Mantido oculto: o modo noturno agora é o tema "Escuro". -->
+                <input type="checkbox" id="toggle-dark-mode" style="display:none">
             </div>
             <div class="modal-actions">
                 <button class="btn btn-add" onclick="saveUserSettings()">Salvar e Fechar</button>
@@ -463,6 +472,6 @@
     <script src="js/10-export-backup-gitlab.js"></script>
     <script src="js/11-supabase-sync.js"></script>
     <script src="js/12-dashboard.js"></script>
-    <script src="js/13-client-portal.js"></script>  
+    <script src="export-teams.js"></script>
 </body>
 </html>
