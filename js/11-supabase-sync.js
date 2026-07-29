@@ -8,11 +8,11 @@
 // Requer a migração sql/supabase-update-v2.sql (coluna project_name).
 // =====================================================================
 
+
 // --- CONFIGURAÇÃO -----------------------------------------------------
 // Opcional: preencha para fixar a conexão no código (equipe não configura nada)
-const SB_DEFAULT_URL = 'https://wilxxkkqgoigmrdgufej.supabase.co';      // ex: 'https://xxxxxxxx.supabase.co'
+const SB_DEFAULT_URL = 'https://wilxxkkqgoigmrdgufej.supabase.co';      // ex: 'https://xxxxxxxx.supabase.co'
 const SB_DEFAULT_ANON_KEY = 'sb_publishable_4aAvHuCLifDoik3w-ECc7Q_8L6jxaXn'; // ex: 'sb_publishable_...'
-
 const SB_CONFIG_KEY = 'testAppSupabaseConfig';
 const SB_BUCKET = 'evidencias';
 const SB_INLINE_LIMIT = 300000;         // data-URI acima disso vai para o Storage
@@ -141,19 +141,8 @@ function sbInjectLoginScreen() {
         <button class="btn" style="background-color:#3ecf8e; width:100%; padding:11px; font-size:1em; margin-bottom:8px;" onclick="sbSignIn()">Entrar</button>
         <button class="btn" style="background-color:#3b6ff0; width:100%; padding:11px; font-size:1em;" onclick="sbSignUp()">Criar conta</button>
 
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px;">
-            <a href="#" onclick="sbToggleLoginConfig(); return false;" style="font-size:0.82em; color:#999; text-decoration:none;">⚙️ Configurar conexão</a>
+        <div style="display:flex; justify-content:center; align-items:center; margin-top:16px;">
             <a href="#" onclick="sbSkipLogin(); return false;" style="font-size:0.82em; color:#999; text-decoration:none;">Continuar sem login →</a>
-        </div>
-
-        <div id="sb-login-config" style="display:none; margin-top:14px; padding:12px; border:1px dashed #bbb; border-radius:8px; text-align:left;">
-            <label style="display:block; font-size:0.82em; margin-bottom:4px;">URL do projeto Supabase</label>
-            <input type="text" id="sb-config-url" class="form-input" placeholder="https://xxxxxxxx.supabase.co" value="${cfg.url || ''}"
-                   style="width:100%; margin-bottom:8px; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
-            <label style="display:block; font-size:0.82em; margin-bottom:4px;">Chave pública (publishable / anon key)</label>
-            <input type="password" id="sb-config-key" class="form-input" placeholder="sb_publishable_..." value="${cfg.anonKey || ''}"
-                   style="width:100%; margin-bottom:8px; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
-            <button class="btn" style="background-color:#3b6ff0; padding:7px 14px; width:100%;" onclick="sbSaveConfig()">Salvar configuração</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
