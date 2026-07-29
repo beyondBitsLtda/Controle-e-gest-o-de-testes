@@ -1016,6 +1016,119 @@ async function portalUpdateTicketField(ticketId, field, value) {
 }
 
 // =====================================================================
+//  GESTÃO DE ACESSOS (interno) — papéis e acesso a projetos
+// =====================================================================
+let portalUsersData = [];
+let portalAllProjects = [];
+let portalAccessExpanded = null;
+
+async function portalAdminInvoke(body) {
+    const client = sbGetClient();
+    const { data, error } = await client.functions.invoke('portal-admin', { body });
+    if (error) throw new Error(error.message || 'Falha na função');
+    if (data && data.error) throw new Error(data.error);
+    return data;
+}
+
+async function portalOpenAccessMgmt() {
+    portalModalShell('portal-access-modal', '👤 Gerenciar Acessos', `
+        <input id="pac-search" oninput="portalRenderUserList()" placeholder="Buscar por nome ou e-mail..." class="form-input"
+               style="width:100%; padding:9px; border:1px solid var(--bb-border,#ccc); border-radius:8px; box-sizing:border-box; margin-bottom:12px;">
+        <div id="pac-status" style="font-size:0.85em; color:var(--bb-txt2,#888); margin-bottom:8px;">Carregando usuários...</div>
+        <div id="pac-list"></div>
+    `);
+    try {
+        const data = await portalAdminInvoke({ action: 'list_users' });
+        portalUsersData = data.users || [];
+        portalAllProjects = data.all_projects || [];
+        document.getElementById('pac-status').textContent = `${portalUsersData.length} usuário(s).`;
+        portalRenderUserList();
+    } catch (e) {
+        document.getElementById('pac-status').innerHTML = '<span style="color:#c0392b;">Erro: ' + e.message + '</span>';
+    }
+}
+
+function portalRenderUserList() {
+    const box = document.getElementById('pac-list');
+    if (!box) return;
+    const term = (document.getElementById('pac-search')?.value || '').toLowerCase();
+    const users = portalUsersData.filter(u =>
+        !term || (u.full_name || '').toLowerCase().includes(term) || (u.email || '').toLowerCase().includes(term));
+
+    box.innerHTML = users.map(u => {
+        const isInterno = u.role === 'interno';
+        const roleColor = isInterno ? '#2980b9' : '#8e44ad';
+        const projSummary = isInterno ? 'Acesso total (colaborador)'
+            : (u.projects.length ? u.projects.map(p => p.project_name + (p.can_view_all ? ' ⭐' : '')).join(', ') : 'Nenhum projeto');
+        const expanded = portalAccessExpanded === u.id;
+        return `
+          <div style="border:1px solid var(--bb-border,#e5e8ef); border-radius:10px; padding:12px 14px; margin-bottom:8px; background:var(--bb-surface,#fff);">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+              <div style="flex:1; min-width:160px;">
+                <div style="font-weight:600;">${u.full_name || '(sem nome)'}</div>
+                <div style="font-size:0.8em; color:var(--bb-txt2,#888);">${u.email}</div>
+              </div>
+              <select onchange="portalSetUserRole('${u.id}', this.value)" style="padding:7px; border-radius:6px; border:1px solid ${roleColor}; color:${roleColor}; font-weight:600; font-size:0.85em;">
+                <option value="cliente" ${!isInterno?'selected':''}>Cliente (portal)</option>
+                <option value="interno" ${isInterno?'selected':''}>Colaborador (plano de testes)</option>
+              </select>
+              ${!isInterno ? `<button onclick="portalAccessExpanded='${expanded?'':u.id}'; portalRenderUserList()" style="border:none; background:var(--bb-copper,#3b6ff0); color:#fff; border-radius:6px; padding:7px 12px; cursor:pointer; font-size:0.85em;">${expanded?'Fechar':'Projetos'}</button>` : ''}
+            </div>
+            ${!isInterno ? `<div style="font-size:0.78em; color:var(--bb-txt2,#999); margin-top:6px;">📁 ${projSummary}</div>` : ''}
+            ${(!isInterno && expanded) ? portalRenderUserProjects(u) : ''}
+          </div>`;
+    }).join('') || '<em>Nenhum usuário encontrado.</em>';
+}
+
+function portalRenderUserProjects(u) {
+    if (!portalAllProjects.length) return '<div style="margin-top:8px; font-size:0.82em; color:#999;">Nenhum projeto de chamados cadastrado.</div>';
+    return `<div style="margin-top:10px; border-top:1px solid var(--bb-border,#eee); padding-top:10px;">
+        ${portalAllProjects.map(pr => {
+            const acc = u.projects.find(a => a.project_id === pr.id);
+            const has = !!acc;
+            const sup = acc ? acc.can_view_all : false;
+            return `<div style="display:flex; align-items:center; gap:12px; padding:5px 0; font-size:0.85em;">
+                <label style="display:flex; align-items:center; gap:6px; flex:1; cursor:pointer;">
+                  <input type="checkbox" ${has?'checked':''} onchange="portalSetProjectAccess('${u.id}','${pr.id}', this.checked, ${sup})">
+                  ${pr.name}
+                </label>
+                <label style="display:flex; align-items:center; gap:6px; cursor:pointer; opacity:${has?1:0.4};">
+                  <input type="checkbox" ${sup?'checked':''} ${has?'':'disabled'} onchange="portalSetProjectAccess('${u.id}','${pr.id}', true, this.checked)">
+                  ⭐ Supervisor (vê todos)
+                </label>
+              </div>`;
+        }).join('')}
+      </div>`;
+}
+
+async function portalSetUserRole(userId, role) {
+    try {
+        await portalAdminInvoke({ action: 'set_role', user_id: userId, role });
+        const u = portalUsersData.find(x => x.id === userId);
+        if (u) u.role = role;
+        portalRenderUserList();
+    } catch (e) { alert('Erro ao mudar papel: ' + e.message); }
+}
+
+async function portalSetProjectAccess(userId, projectId, grant, canViewAll) {
+    try {
+        await portalAdminInvoke({ action: 'set_project_access', user_id: userId, project_id: projectId, grant, can_view_all: canViewAll });
+        // Atualiza estado local
+        const u = portalUsersData.find(x => x.id === userId);
+        if (u) {
+            if (grant) {
+                const existing = u.projects.find(p => p.project_id === projectId);
+                if (existing) existing.can_view_all = canViewAll;
+                else u.projects.push({ project_id: projectId, project_name: (portalAllProjects.find(p => p.id === projectId) || {}).name || '', can_view_all: canViewAll });
+            } else {
+                u.projects = u.projects.filter(p => p.project_id !== projectId);
+            }
+        }
+        portalRenderUserList();
+    } catch (e) { alert('Erro ao alterar acesso: ' + e.message); portalOpenAccessMgmt(); }
+}
+
+// =====================================================================
 //  SHELL DE MODAL GENÉRICO (usado pelo portal)
 // =====================================================================
 function portalModalShell(id, titleText, innerHTML) {
@@ -1061,6 +1174,12 @@ function portalInjectInternalButtons() {
     adminBtn.textContent = '⚙️ Gerenciar Portal';
     adminBtn.onclick = portalOpenAdmin;
     box.appendChild(adminBtn);
+
+    const accessBtn = document.createElement('button');
+    accessBtn.className = 'btn'; accessBtn.style.backgroundColor = '#16a085'; accessBtn.style.marginTop = '6px';
+    accessBtn.textContent = '👤 Gerenciar Acessos';
+    accessBtn.onclick = portalOpenAccessMgmt;
+    box.appendChild(accessBtn);
 
     sidebar.appendChild(box);
 }
