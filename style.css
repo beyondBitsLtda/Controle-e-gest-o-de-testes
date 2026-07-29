@@ -1213,3 +1213,122 @@ body.dark-mode .modal-overlay { background: rgba(5,7,12,0.6); }
 #publish-repo-modal .modal-content, #repo-backups-modal .modal-content { width: min(92vw, 780px); max-width: 780px; }
 /* Visualizador de mídia: dimensiona pelo conteúdo */
 .media-content { width: auto; max-width: 95vw; max-height: 95vh; padding: 0; overflow: visible; }
+
+/* ==========================================================================
+   TEMAS COMPLETOS  —  cole este bloco NO FINAL do style.css
+   Ativados por  <html data-theme="...">  (o JS grava isso e salva no navegador).
+   Cada tema redefine as variáveis de cor usadas no plano de testes E no portal.
+   Temas: claro (padrão), escuro, sepia, terminal, oceano, roza.
+   ========================================================================== */
+
+/* Transição suave ao trocar de tema */
+html { transition: background-color .2s ease, color .2s ease; }
+
+/* -------------------------------------------------------------------------
+   Mapa de variáveis por tema.
+   Definimos um conjunto "canônico" e espelhamos nas variáveis legadas
+   (--cor-*, --log-*) para o app antigo acompanhar.
+   ------------------------------------------------------------------------- */
+
+/* ====== ESCURO ====== */
+html[data-theme="escuro"] {
+    --bb-bg:#12141a;      --bb-surface:#1b1e26;   --bb-card:#1b1e26;
+    --bb-elevated:#232732; --bb-border:#2c313d;   --bb-border-h:#3a4150;
+    --bb-copper:#5b8def;  --bb-copper-l:#7ba3f5;  --bb-copper-d:#3f6fd6;
+    --bb-txt1:#e8eaed;    --bb-txt2:#b3b9c5;      --bb-txt3:#828b9c;
+    --cor-primaria:#5b8def; --cor-primaria-hover:#7ba3f5;
+    --cor-fundo:#12141a;  --cor-cinza-fundo:#12141a; --cor-fundo-card:#1b1e26;
+    --cor-texto-escuro:#e8eaed; --cor-texto-claro:#b3b9c5; --cor-texto-mutado:#828b9c;
+    --cor-botao-funcao:#232732;
+    --priority-critical:#ff6b6b; --priority-high:#ff8787; --priority-medium:#f6c453; --priority-low:#74a9ff;
+    --cor-status-aprovado:#3ddc97; --cor-status-reprovado:#ff6b6b; --cor-status-invalido:#b28dff;
+    color-scheme: dark;
+}
+
+/* ====== SEPIA ====== */
+html[data-theme="sepia"] {
+    --bb-bg:#f3e9d8;      --bb-surface:#faf3e6;   --bb-card:#faf3e6;
+    --bb-elevated:#f0e5cf; --bb-border:#e0d2b6;   --bb-border-h:#cdbb96;
+    --bb-copper:#a2703f;  --bb-copper-l:#c08a52;  --bb-copper-d:#7d5327;
+    --bb-txt1:#3b2f1e;    --bb-txt2:#6b5a42;      --bb-txt3:#8a7960;
+    --cor-primaria:#a2703f; --cor-primaria-hover:#c08a52;
+    --cor-fundo:#f3e9d8;  --cor-cinza-fundo:#f3e9d8; --cor-fundo-card:#faf3e6;
+    --cor-texto-escuro:#3b2f1e; --cor-texto-claro:#6b5a42; --cor-texto-mutado:#8a7960;
+    --cor-botao-funcao:#faf3e6;
+    --priority-critical:#a3341f; --priority-high:#c0532b; --priority-medium:#b1852f; --priority-low:#7d6b3f;
+    --cor-status-aprovado:#5a7d3a; --cor-status-reprovado:#a3341f; --cor-status-invalido:#8a6a3a;
+    color-scheme: light;
+}
+
+/* ====== TERMINAL (verde sobre preto) ====== */
+html[data-theme="terminal"] {
+    --bb-bg:#0a0f0a;      --bb-surface:#0f1710;   --bb-card:#0f1710;
+    --bb-elevated:#14201a; --bb-border:#1d3320;   --bb-border-h:#2a4a2e;
+    --bb-copper:#39ff14;  --bb-copper-l:#7bff5c;  --bb-copper-d:#22c40a;
+    --bb-txt1:#c8ffc0;    --bb-txt2:#7fdc7a;      --bb-txt3:#4f9a54;
+    --cor-primaria:#39ff14; --cor-primaria-hover:#7bff5c;
+    --cor-fundo:#0a0f0a;  --cor-cinza-fundo:#0a0f0a; --cor-fundo-card:#0f1710;
+    --cor-texto-escuro:#c8ffc0; --cor-texto-claro:#7fdc7a; --cor-texto-mutado:#4f9a54;
+    --cor-botao-funcao:#14201a;
+    --priority-critical:#ff5555; --priority-high:#ff9955; --priority-medium:#f6ff55; --priority-low:#55ffbb;
+    --cor-status-aprovado:#39ff14; --cor-status-reprovado:#ff5555; --cor-status-invalido:#b28dff;
+    color-scheme: dark;
+}
+
+/* ====== OCEANO (azul-petróleo escuro) ====== */
+html[data-theme="oceano"] {
+    --bb-bg:#0d1b26;      --bb-surface:#122735;   --bb-card:#122735;
+    --bb-elevated:#173142; --bb-border:#1f3d50;   --bb-border-h:#2c5169;
+    --bb-copper:#2bb5c9;  --bb-copper-l:#54cddf;  --bb-copper-d:#1a8fa3;
+    --bb-txt1:#e2f1f5;    --bb-txt2:#9fc2cd;      --bb-txt3:#6f97a4;
+    --cor-primaria:#2bb5c9; --cor-primaria-hover:#54cddf;
+    --cor-fundo:#0d1b26;  --cor-cinza-fundo:#0d1b26; --cor-fundo-card:#122735;
+    --cor-texto-escuro:#e2f1f5; --cor-texto-claro:#9fc2cd; --cor-texto-mutado:#6f97a4;
+    --cor-botao-funcao:#173142;
+    --priority-critical:#ff6b6b; --priority-high:#ff9f68; --priority-medium:#ffd166; --priority-low:#6fd3e0;
+    --cor-status-aprovado:#3ddc97; --cor-status-reprovado:#ff6b6b; --cor-status-invalido:#b28dff;
+    color-scheme: dark;
+}
+
+/* ====== ROZA (claro, acento magenta) ====== */
+html[data-theme="roza"] {
+    --bb-bg:#fbeff5;      --bb-surface:#ffffff;   --bb-card:#ffffff;
+    --bb-elevated:#fbe6f0; --bb-border:#f0d3e2;   --bb-border-h:#e3b6cf;
+    --bb-copper:#d6336c;  --bb-copper-l:#e85c8c;  --bb-copper-d:#a61e50;
+    --bb-txt1:#3a1526;    --bb-txt2:#7a4a5f;      --bb-txt3:#a06d81;
+    --cor-primaria:#d6336c; --cor-primaria-hover:#e85c8c;
+    --cor-fundo:#fbeff5;  --cor-cinza-fundo:#fbeff5; --cor-fundo-card:#ffffff;
+    --cor-texto-escuro:#3a1526; --cor-texto-claro:#7a4a5f; --cor-texto-mutado:#a06d81;
+    --cor-botao-funcao:#ffffff;
+    --priority-critical:#c1123e; --priority-high:#e5484d; --priority-medium:#e6a23c; --priority-low:#8e6ee6;
+    --cor-status-aprovado:#22a06b; --cor-status-reprovado:#c1123e; --cor-status-invalido:#8e6ee6;
+    color-scheme: light;
+}
+
+/* -------------------------------------------------------------------------
+   Ajustes finos para os temas ESCUROS não deixarem nada "branco fixo".
+   Aplicam-se a qualquer tema marcado como escuro.
+   ------------------------------------------------------------------------- */
+html[data-theme="escuro"] body,
+html[data-theme="terminal"] body,
+html[data-theme="oceano"] body {
+    background: var(--bb-bg);
+    color: var(--bb-txt1);
+}
+
+/* Campos de formulário nos temas escuros */
+html[data-theme="escuro"] input,   html[data-theme="escuro"] select,   html[data-theme="escuro"] textarea,
+html[data-theme="terminal"] input, html[data-theme="terminal"] select, html[data-theme="terminal"] textarea,
+html[data-theme="oceano"] input,   html[data-theme="oceano"] select,   html[data-theme="oceano"] textarea {
+    background: var(--bb-elevated);
+    color: var(--bb-txt1);
+    border-color: var(--bb-border);
+}
+html[data-theme="escuro"] input::placeholder,
+html[data-theme="terminal"] input::placeholder,
+html[data-theme="oceano"] input::placeholder { color: var(--bb-txt3); }
+
+/* Barra de rolagem discreta nos temas escuros */
+html[data-theme="escuro"] ::-webkit-scrollbar-thumb,
+html[data-theme="terminal"] ::-webkit-scrollbar-thumb,
+html[data-theme="oceano"] ::-webkit-scrollbar-thumb { background: var(--bb-border-h); border-radius: 6px; }
