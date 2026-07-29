@@ -10,8 +10,8 @@
 
 // --- CONFIGURAÇÃO -----------------------------------------------------
 // Opcional: preencha para fixar a conexão no código (equipe não configura nada)
-const SB_DEFAULT_URL = '';      // ex: 'https://xxxxxxxx.supabase.co'
-const SB_DEFAULT_ANON_KEY = ''; // ex: 'sb_publishable_...'
+const SB_DEFAULT_URL = 'https://wilxxkkqgoigmrdgufej.supabase.co';      // ex: 'https://xxxxxxxx.supabase.co'
+const SB_DEFAULT_ANON_KEY = 'sb_publishable_4aAvHuCLifDoik3w-ECc7Q_8L6jxaXn'; // ex: 'sb_publishable_...'
 
 const SB_CONFIG_KEY = 'testAppSupabaseConfig';
 const SB_BUCKET = 'evidencias';
