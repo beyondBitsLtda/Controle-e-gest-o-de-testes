@@ -35,25 +35,22 @@ const STATUS_COLORS = {
     'Aguardando Cliente':'#e6a800', 'Resolvido':'#1e8e3e', 'Fechado':'#555'
 };
 
-// --- TEMAS (valem no app de testes E no portal, via variáveis --bb-*) ---
-const PORTAL_THEMES = {
-    azul:   { name: 'Azul',   vars: { '--bb-copper':'#3b6ff0','--bb-copper-d':'#2a55c4','--bb-bg':'#eef0f4','--bb-surface':'#ffffff','--bb-border':'#e5e8ef' } },
-    verde:  { name: 'Verde',  vars: { '--bb-copper':'#1e8e3e','--bb-copper-d':'#14632b','--bb-bg':'#eef4f0','--bb-surface':'#ffffff','--bb-border':'#dbe7df' } },
-    indigo: { name: 'Índigo', vars: { '--bb-copper':'#5b4bd0','--bb-copper-d':'#3f2fae','--bb-bg':'#f0eff8','--bb-surface':'#ffffff','--bb-border':'#e4e0f0' } }
-};
+// --- TEMAS (definidos no style.css via [data-theme]) ------------------
+const PORTAL_THEMES = { claro:'Claro', escuro:'Escuro', sepia:'Sépia', terminal:'Terminal', oceano:'Oceano', roza:'Roza' };
 function portalCurrentTheme() {
-    try { return localStorage.getItem('portalTheme') || 'azul'; } catch (e) { return 'azul'; }
+    try { return localStorage.getItem('portalTheme') || 'claro'; } catch (e) { return 'claro'; }
 }
 function portalApplyTheme(name) {
-    const t = PORTAL_THEMES[name] || PORTAL_THEMES.azul;
+    if (!PORTAL_THEMES[name]) name = 'claro';
     const root = document.documentElement;
-    Object.entries(t.vars).forEach(([k, v]) => root.style.setProperty(k, v));
+    if (name === 'claro') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', name);
     try { localStorage.setItem('portalTheme', name); } catch (e) {}
 }
 function portalThemePicker() {
     const cur = portalCurrentTheme();
-    return `<select onchange="portalApplyTheme(this.value)" title="Tema de cores" style="padding:6px 8px; border-radius:6px; border:1px solid var(--bb-border,#ccc); font-size:0.85em;">
-        ${Object.entries(PORTAL_THEMES).map(([k, t]) => `<option value="${k}" ${cur===k?'selected':''}>Tema: ${t.name}</option>`).join('')}
+    return `<select onchange="portalApplyTheme(this.value)" title="Tema de cores" style="padding:6px 8px; border-radius:6px; border:1px solid var(--bb-border,#ccc); font-size:0.85em; background:var(--bb-surface,#fff); color:var(--bb-txt1,#222);">
+        ${Object.entries(PORTAL_THEMES).map(([k, label]) => `<option value="${k}" ${cur===k?'selected':''}>Tema: ${label}</option>`).join('')}
       </select>`;
 }
 // Aplica o tema salvo o quanto antes (evita piscar).
@@ -845,6 +842,7 @@ async function portalOpenTicketDetail(ticketId, internalView = false) {
             </select></label>
           <label style="font-size:0.85em;">Responsável
             <input value="${t.assignee||''}" onchange="portalUpdateTicketField('${t.id}','assignee',this.value)" placeholder="Ninguém" style="display:block; padding:8px; border-radius:6px; border:1px solid #ccc;"></label>
+          <button onclick="portalDeleteTicket('${t.id}', ${t.display_id})" title="Excluir chamado" style="align-self:flex-end; border:1px solid var(--priority-high,#e5484d); background:var(--bb-surface,#fff); color:var(--priority-high,#e5484d); border-radius:6px; padding:8px 12px; cursor:pointer; font-size:0.85em;">Excluir chamado</button>
         </div>
         ${portalSlaBar(t)}` : `
         <div style="margin:8px 0;">${portalBadge(t.status, STATUS_COLORS[t.status])} ${portalBadge(t.priority, PRIORITY_COLORS[t.priority])} ${sla.badge}</div>
@@ -992,6 +990,15 @@ async function portalAddComment(ticketId, internalView) {
     if (internalView) portalRefreshInternalQueue(); else portalRefreshClientView();
 }
 
+async function portalDeleteTicket(ticketId, displayId) {
+    if (!confirm(`Excluir definitivamente o chamado #${displayId}?\n\nIsso remove o chamado, a conversa e as evidências. Não dá para desfazer.`)) return;
+    const client = sbGetClient();
+    const { error } = await client.from('support_tickets').delete().eq('id', ticketId);
+    if (error) { alert('Erro ao excluir: ' + error.message); return; }
+    portalCloseModal('ticket-detail-modal');
+    portalRefreshInternalQueue();
+}
+
 async function portalReopenTicket(ticketId) {
     const client = sbGetClient();
     const { error } = await client.rpc('reopen_ticket', { p_ticket: ticketId });
@@ -1054,17 +1061,27 @@ function portalShowSlaInfo() {
     `);
 }
 
+// Campo de senha reutilizável com botão "ver/ocultar".
+function portalPasswordField(id, placeholder, wrapStyle) {
+    return `<div style="position:relative; ${wrapStyle || ''}">
+        <input type="password" id="${id}" placeholder="${placeholder}" class="form-input"
+               style="width:100%; padding:10px 56px 10px 12px; border:1px solid var(--bb-border,#ccc); border-radius:8px; box-sizing:border-box; background:var(--bb-surface,#fff); color:var(--bb-txt1,#222);">
+        <button type="button" onclick="var i=document.getElementById('${id}'); i.type=i.type==='password'?'text':'password'; this.textContent=i.type==='password'?'ver':'ocultar';"
+                style="position:absolute; right:8px; top:50%; transform:translateY(-50%); border:none; background:none; cursor:pointer; font-size:0.78em; color:var(--bb-copper,#3b6ff0); font-weight:600;">ver</button>
+      </div>`;
+}
+
 // --- TROCA DE SENHA (requerente) -------------------------------------
 function portalOpenChangePassword() {
     portalModalShell('portal-pass-modal', 'Trocar minha senha', `
         <label style="font-weight:600; font-size:0.9em;">Nova senha</label>
-        <input id="pp-new" type="password" placeholder="Mínimo 6 caracteres" style="width:100%; margin:4px 0 12px; padding:10px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
+        <div style="margin:4px 0 12px;">${portalPasswordField('pp-new', 'Mínimo 6 caracteres')}</div>
         <label style="font-weight:600; font-size:0.9em;">Confirmar nova senha</label>
-        <input id="pp-confirm" type="password" placeholder="Repita a senha" style="width:100%; margin:4px 0 12px; padding:10px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
+        <div style="margin:4px 0 12px;">${portalPasswordField('pp-confirm', 'Repita a senha')}</div>
         <div id="pp-status" style="min-height:20px; font-size:0.85em;"></div>
         <div style="text-align:right;">
           <button onclick="portalCloseModal('portal-pass-modal')" style="border:none; background:#ddd; border-radius:8px; padding:10px 16px; cursor:pointer; margin-right:8px;">Cancelar</button>
-          <button onclick="portalSubmitNewPassword()" style="border:none; background:#3b6ff0; color:#fff; border-radius:8px; padding:10px 20px; font-weight:600; cursor:pointer;">Salvar</button>
+          <button onclick="portalSubmitNewPassword()" style="border:none; background:var(--bb-copper,#3b6ff0); color:#fff; border-radius:8px; padding:10px 20px; font-weight:600; cursor:pointer;">Salvar</button>
         </div>
     `);
 }
@@ -1488,7 +1505,7 @@ function portalRenderAdminBody() {
         <div style="display:flex; gap:6px; flex-wrap:wrap;">
           <input id="pa-cli-name" placeholder="Nome" style="flex:1; min-width:120px; padding:8px; border:1px solid #ccc; border-radius:6px;">
           <input id="pa-cli-email" placeholder="E-mail" style="flex:1.4; min-width:160px; padding:8px; border:1px solid #ccc; border-radius:6px;">
-          <input id="pa-cli-pass" placeholder="Senha inicial" style="flex:1; min-width:120px; padding:8px; border:1px solid #ccc; border-radius:6px;">
+          ${portalPasswordField('pa-cli-pass', 'Senha inicial', 'flex:1; min-width:130px;')}
           <button onclick="portalInviteClient()" style="border:none; background:#8e44ad; color:#fff; border-radius:6px; padding:8px 14px; cursor:pointer;">Criar acesso</button>
         </div>
         <label style="font-size:0.85em; display:flex; align-items:center; gap:6px; margin-top:8px; cursor:pointer;">
