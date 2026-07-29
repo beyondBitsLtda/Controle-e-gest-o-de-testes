@@ -73,13 +73,13 @@ function portalBootSplash() {
 }
 function portalRemoveBoot() { document.getElementById('portal-boot')?.remove(); }
 
-// Se já existe sessão salva, mostra o splash IMEDIATAMENTE (antes do app renderizar).
+// Mostra o splash IMEDIATAMENTE ao carregar (cobre o app de testes até
+// decidirmos a rota). Trava de segurança remove após alguns segundos.
 (function portalMaybeBoot() {
     try {
-        const hasSession = Object.keys(localStorage).some(k => k.includes('-auth-token'));
-        if (!hasSession) return;
-        if (document.body) portalBootSplash();
-        else document.addEventListener('DOMContentLoaded', portalBootSplash);
+        const show = () => { portalBootSplash(); setTimeout(portalRemoveBoot, 6000); };
+        if (document.body) show();
+        else document.addEventListener('DOMContentLoaded', show);
     } catch (e) { /* ignore */ }
 })();
 
@@ -467,6 +467,7 @@ async function portalEnterClientMode() {
               <option value="vencimento">Vencimento do SLA</option>
               <option value="prioridade">Prioridade</option>
             </select>
+            <button onclick="portalShowSlaInfo()" title="Ver prazos de atendimento" style="border:1px solid var(--bb-border,#ccc); background:var(--bb-surface,#fff); color:var(--bb-txt2,#555); border-radius:8px; padding:8px 12px; cursor:pointer; font-size:0.85em;">ℹ️ Prazos (SLA)</button>
             <button onclick="portalOpenNewTicketModal()" style="border:none; background:var(--bb-copper,#3b6ff0); color:#fff; border-radius:8px; padding:10px 16px; font-weight:600; cursor:pointer;">➕ Abrir chamado</button>
           </div>
         </div>
@@ -979,6 +980,42 @@ async function portalNotifyTicket(type, record, oldRecord) {
     }
 }
 
+// --- PRAZOS DE SLA (explicado) ---------------------------------------
+function portalShowSlaInfo() {
+    const proj = portalCurrentProject();
+    const slas = (proj && proj.slas) ? proj.slas.slice() : [];
+    const order = { 'Crítica': 4, 'Alta': 3, 'Média': 2, 'Baixa': 1 };
+    slas.sort((a, b) => (order[b.priority] || 0) - (order[a.priority] || 0));
+    const fmt = h => h == null ? '—' : (h >= 24 && h % 24 === 0 ? `${h / 24} dia(s)` : `${h}h`);
+
+    const rows = slas.length ? slas.map(s => `
+        <tr>
+          <td style="padding:8px; border-bottom:1px solid var(--bb-border,#eee);">${portalBadge(s.priority, PRIORITY_COLORS[s.priority] || '#666')}</td>
+          <td style="padding:8px; border-bottom:1px solid var(--bb-border,#eee); text-align:center;">${fmt(s.response_hours)}</td>
+          <td style="padding:8px; border-bottom:1px solid var(--bb-border,#eee); text-align:center;">${fmt(s.resolution_hours)}</td>
+        </tr>`).join('') : '<tr><td colspan="3" style="padding:10px; color:#999;">Nenhum SLA definido para este projeto.</td></tr>';
+
+    portalModalShell('portal-sla-modal', 'ℹ️ Prazos de atendimento (SLA)', `
+        <p style="font-size:0.9em; color:var(--bb-txt2,#666); margin-top:0;">
+          O <b>SLA</b> é o prazo com que nos comprometemos para cada chamado, conforme a <b>prioridade</b>.
+          O prazo começa a contar na abertura do chamado.
+        </p>
+        <table style="width:100%; border-collapse:collapse; font-size:0.9em;">
+          <tr style="text-align:left; color:var(--bb-txt2,#888);">
+            <th style="padding:8px;">Prioridade</th>
+            <th style="padding:8px; text-align:center;">1º atendimento</th>
+            <th style="padding:8px; text-align:center;">Resolução</th>
+          </tr>
+          ${rows}
+        </table>
+        <ul style="font-size:0.82em; color:var(--bb-txt2,#777); margin-top:14px; padding-left:18px;">
+          <li><b>1º atendimento</b>: tempo até darmos o primeiro retorno.</li>
+          <li><b>Resolução</b>: tempo previsto para solucionar o chamado.</li>
+          <li>A barrinha em cada chamado mostra quanto do prazo de resolução já foi consumido.</li>
+        </ul>
+    `);
+}
+
 // --- TROCA DE SENHA (requerente) -------------------------------------
 function portalOpenChangePassword() {
     portalModalShell('portal-pass-modal', '🔑 Trocar minha senha', `
@@ -1458,7 +1495,7 @@ async function portalInviteClient() {
 (function hookAuth() {
     if (typeof window.sbEnterApp === 'function') {
         const _enter = window.sbEnterApp;
-        window.sbEnterApp = function () { _enter.apply(this, arguments); setTimeout(portalOnAuth, 50); };
+        window.sbEnterApp = function () { portalBootSplash(); setTimeout(portalRemoveBoot, 6000); _enter.apply(this, arguments); setTimeout(portalOnAuth, 50); };
     }
     if (typeof window.sbSignOut === 'function') {
         const _out = window.sbSignOut;
