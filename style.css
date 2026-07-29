@@ -1332,3 +1332,96 @@ html[data-theme="oceano"] input::placeholder { color: var(--bb-txt3); }
 html[data-theme="escuro"] ::-webkit-scrollbar-thumb,
 html[data-theme="terminal"] ::-webkit-scrollbar-thumb,
 html[data-theme="oceano"] ::-webkit-scrollbar-thumb { background: var(--bb-border-h); border-radius: 6px; }
+
+
+/* ==========================================================================
+   TEMAS COMPLETOS  —  cole este bloco NO FINAL do style.css
+   Ativados por <html data-theme="..."> (o JS grava isso e salva no navegador).
+   Os temas ESCUROS reaproveitam o .dark-mode já existente do app (o JS adiciona
+   a classe), então TODOS os módulos ficam escuros e legíveis; aqui só ajustamos
+   a paleta/acento. Contraste calibrado: nada fica ilegível.
+   ========================================================================== */
+
+html { transition: background-color .2s ease, color .2s ease; }
+
+/* =========================== TEMAS ESCUROS ================================
+   Base: .dark-mode (aplicada pelo JS). Aqui definimos as variáveis --bb-*/--cor-*
+   para o portal e as partes que usam variáveis. Fundos escuros + texto claro. */
+
+html[data-theme="escuro"] {
+    --bb-bg:#0b0d13; --bb-surface:#161926; --bb-card:#171a26; --bb-elevated:#1c2030;
+    --bb-border:#262b3d; --bb-border-h:#333a50;
+    --bb-copper:#5b8def; --bb-copper-l:#7ba3f5; --bb-copper-d:#3f6fd6;
+    --bb-txt1:#e6e8f0; --bb-txt2:#aeb6c6; --bb-txt3:#8b93a5;
+    --cor-primaria:#5b8def; --cor-primaria-hover:#7ba3f5;
+    --cor-fundo:#0b0d13; --cor-cinza-fundo:#0b0d13; --cor-fundo-card:#161926;
+    --cor-texto-escuro:#e6e8f0; --cor-texto-claro:#aeb6c6; --cor-texto-mutado:#8b93a5;
+    color-scheme: dark;
+}
+
+html[data-theme="terminal"] {
+    --bb-bg:#050a05; --bb-surface:#0d160d; --bb-card:#0f1a0f; --bb-elevated:#132013;
+    --bb-border:#1e351e; --bb-border-h:#2b4a2b;
+    --bb-copper:#39d91f; --bb-copper-l:#5cf03f; --bb-copper-d:#22a012;
+    --bb-txt1:#d6ffcf; --bb-txt2:#8fd889; --bb-txt3:#5f9a5a;
+    --cor-primaria:#39d91f; --cor-primaria-hover:#5cf03f;
+    --cor-fundo:#050a05; --cor-cinza-fundo:#050a05; --cor-fundo-card:#0d160d;
+    --cor-texto-escuro:#d6ffcf; --cor-texto-claro:#8fd889; --cor-texto-mutado:#5f9a5a;
+    color-scheme: dark;
+}
+
+html[data-theme="oceano"] {
+    --bb-bg:#08151d; --bb-surface:#0f2430; --bb-card:#123040; --bb-elevated:#163847;
+    --bb-border:#1f4050; --bb-border-h:#2c5468;
+    --bb-copper:#31c1d6; --bb-copper-l:#5cd7e8; --bb-copper-d:#1f9aad;
+    --bb-txt1:#e2f1f5; --bb-txt2:#a6c6d0; --bb-txt3:#749aa6;
+    --cor-primaria:#31c1d6; --cor-primaria-hover:#5cd7e8;
+    --cor-fundo:#08151d; --cor-cinza-fundo:#08151d; --cor-fundo-card:#0f2430;
+    --cor-texto-escuro:#e2f1f5; --cor-texto-claro:#a6c6d0; --cor-texto-mutado:#749aa6;
+    color-scheme: dark;
+}
+
+/* Reforço para os temas escuros (texto/inputs sempre legíveis),
+   inclusive onde o .dark-mode base não chega via variável. */
+html[data-theme="escuro"] body,
+html[data-theme="terminal"] body,
+html[data-theme="oceano"] body { background: var(--bb-bg); color: var(--bb-txt1); }
+
+html[data-theme="escuro"] input,   html[data-theme="escuro"] select,   html[data-theme="escuro"] textarea,
+html[data-theme="terminal"] input, html[data-theme="terminal"] select, html[data-theme="terminal"] textarea,
+html[data-theme="oceano"] input,   html[data-theme="oceano"] select,   html[data-theme="oceano"] textarea {
+    background: var(--bb-elevated) !important; color: var(--bb-txt1) !important; border-color: var(--bb-border) !important;
+}
+html[data-theme="escuro"] ::placeholder,
+html[data-theme="terminal"] ::placeholder,
+html[data-theme="oceano"] ::placeholder { color: var(--bb-txt3) !important; }
+
+html[data-theme="escuro"] ::-webkit-scrollbar-thumb,
+html[data-theme="terminal"] ::-webkit-scrollbar-thumb,
+html[data-theme="oceano"] ::-webkit-scrollbar-thumb { background: var(--bb-border-h); border-radius: 6px; }
+
+/* =========================== TEMAS CLAROS ================================
+   Base: layout claro padrão (sem .dark-mode). Texto escuro sobre fundo claro.
+   Acentos escurecidos o suficiente para carregar texto branco nos botões. */
+
+html[data-theme="sepia"] {
+    --bb-bg:#f2e8d5; --bb-surface:#faf4e8; --bb-card:#faf4e8; --bb-elevated:#f0e5cf;
+    --bb-border:#e0d2b6; --bb-border-h:#cdbb96;
+    --bb-copper:#8a5a2e; --bb-copper-l:#a2703f; --bb-copper-d:#6e4522;
+    --bb-txt1:#2f2415; --bb-txt2:#5c4a33; --bb-txt3:#7d6b52;
+    --cor-primaria:#8a5a2e; --cor-primaria-hover:#a2703f;
+    --cor-fundo:#f2e8d5; --cor-cinza-fundo:#f2e8d5; --cor-fundo-card:#faf4e8;
+    --cor-texto-escuro:#2f2415; --cor-texto-claro:#5c4a33; --cor-texto-mutado:#7d6b52;
+    color-scheme: light;
+}
+
+html[data-theme="roza"] {
+    --bb-bg:#fbeef4; --bb-surface:#ffffff; --bb-card:#ffffff; --bb-elevated:#fbe6f0;
+    --bb-border:#f0d3e2; --bb-border-h:#e3b6cf;
+    --bb-copper:#c1123e; --bb-copper-l:#e0355f; --bb-copper-d:#9c0e31;
+    --bb-txt1:#33101f; --bb-txt2:#6f3a4d; --bb-txt3:#98607a;
+    --cor-primaria:#c1123e; --cor-primaria-hover:#e0355f;
+    --cor-fundo:#fbeef4; --cor-cinza-fundo:#fbeef4; --cor-fundo-card:#ffffff;
+    --cor-texto-escuro:#33101f; --cor-texto-claro:#6f3a4d; --cor-texto-mutado:#98607a;
+    color-scheme: light;
+}
