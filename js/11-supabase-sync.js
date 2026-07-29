@@ -134,9 +134,14 @@ function sbInjectLoginScreen() {
 
         <input type="email" id="sb-login-email" class="form-input" placeholder="E-mail"
                style="width:100%; margin-bottom:10px; padding:11px 12px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
-        <input type="password" id="sb-login-password" class="form-input" placeholder="Senha"
-               style="width:100%; margin-bottom:14px; padding:11px 12px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;"
-               onkeydown="if(event.key==='Enter') sbSignIn()">
+        <div style="position:relative; margin-bottom:14px;">
+          <input type="password" id="sb-login-password" class="form-input" placeholder="Senha"
+                 style="width:100%; padding:11px 42px 11px 12px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;"
+                 onkeydown="if(event.key==='Enter') sbSignIn()">
+          <button type="button" title="Mostrar/ocultar senha"
+                  onclick="var i=document.getElementById('sb-login-password'); i.type=i.type==='password'?'text':'password'; this.textContent=i.type==='password'?'👁️':'🙈';"
+                  style="position:absolute; right:8px; top:50%; transform:translateY(-50%); border:none; background:none; cursor:pointer; font-size:1.15em; line-height:1;">👁️</button>
+        </div>
 
         <button class="btn" style="background-color:#3ecf8e; width:100%; padding:11px; font-size:1em; margin-bottom:8px;" onclick="sbSignIn()">Entrar</button>
         <button class="btn" style="background-color:#3b6ff0; width:100%; padding:11px; font-size:1em;" onclick="sbSignUp()">Criar conta</button>
