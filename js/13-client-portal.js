@@ -35,8 +35,9 @@ const STATUS_COLORS = {
     'Aguardando Cliente':'#e6a800', 'Resolvido':'#1e8e3e', 'Fechado':'#555'
 };
 
-// --- TEMAS (definidos no style.css via [data-theme]) ------------------
+// --- TEMAS (definidos no style.css via [data-theme]; escuros usam .dark-mode) ---
 const PORTAL_THEMES = { claro:'Claro', escuro:'Escuro', sepia:'Sépia', terminal:'Terminal', oceano:'Oceano', roza:'Roza' };
+const PORTAL_DARK_THEMES = ['escuro', 'terminal', 'oceano'];
 function portalCurrentTheme() {
     try { return localStorage.getItem('portalTheme') || 'claro'; } catch (e) { return 'claro'; }
 }
@@ -45,6 +46,13 @@ function portalApplyTheme(name) {
     const root = document.documentElement;
     if (name === 'claro') root.removeAttribute('data-theme');
     else root.setAttribute('data-theme', name);
+    // Temas escuros reaproveitam o .dark-mode completo do app.
+    const isDark = PORTAL_DARK_THEMES.includes(name);
+    if (document.body) document.body.classList.toggle('dark-mode', isDark);
+    try { if (typeof userSettings !== 'undefined' && userSettings) userSettings.darkMode = isDark; } catch (e) {}
+    // Sincroniza os controles da modal de configurações e o portal.
+    const chk = document.getElementById('toggle-dark-mode'); if (chk) chk.checked = isDark;
+    const sel = document.getElementById('theme-select'); if (sel) sel.value = name;
     try { localStorage.setItem('portalTheme', name); } catch (e) {}
 }
 function portalThemePicker() {
@@ -53,8 +61,9 @@ function portalThemePicker() {
         ${Object.entries(PORTAL_THEMES).map(([k, label]) => `<option value="${k}" ${cur===k?'selected':''}>Tema: ${label}</option>`).join('')}
       </select>`;
 }
-// Aplica o tema salvo o quanto antes (evita piscar).
+// Aplica o tema salvo o quanto antes (evita piscar) e novamente ao carregar o DOM.
 (function () { try { portalApplyTheme(portalCurrentTheme()); } catch (e) {} })();
+document.addEventListener('DOMContentLoaded', () => { try { portalApplyTheme(portalCurrentTheme()); } catch (e) {} });
 
 // --- DETECÇÃO DE PAPEL / ROTEAMENTO ----------------------------------
 async function portalOnAuth() {
@@ -661,7 +670,17 @@ function portalTicketRow(t, showRequester) {
 }
 
 function portalBadge(text, color) {
-    return `<span style="background:${color}22; color:${color}; border:1px solid ${color}55; padding:3px 9px; border-radius:12px; font-size:0.75em; font-weight:600; white-space:nowrap;">${text}</span>`;
+    const txt = portalTextOn(color);
+    return `<span style="background:${color}; color:${txt}; border:1px solid ${color}; padding:3px 9px; border-radius:12px; font-size:0.75em; font-weight:600; white-space:nowrap;">${text}</span>`;
+}
+// Escolhe texto preto ou branco conforme a luminância da cor de fundo (contraste).
+function portalTextOn(hex) {
+    try {
+        const c = String(hex).replace('#', '');
+        const r = parseInt(c.substr(0, 2), 16), g = parseInt(c.substr(2, 2), 16), b = parseInt(c.substr(4, 2), 16);
+        const L = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        return L > 0.6 ? '#1a1d26' : '#ffffff';
+    } catch (e) { return '#ffffff'; }
 }
 
 // Estado de SLA (usa o prazo de resolução calculado no banco)
@@ -1300,11 +1319,6 @@ function portalInjectInternalButtons() {
     accessBtn.textContent = 'Gerenciar Acessos';
     accessBtn.onclick = portalOpenAccessMgmt;
     box.appendChild(accessBtn);
-
-    const themeWrap = document.createElement('div');
-    themeWrap.style.marginTop = '8px';
-    themeWrap.innerHTML = portalThemePicker();
-    box.appendChild(themeWrap);
 
     sidebar.appendChild(box);
 }
