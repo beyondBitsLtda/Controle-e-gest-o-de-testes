@@ -24,6 +24,7 @@ let portalSortBy = 'recentes';         // ordenação da lista do cliente
 let portalViewAllMode = false;         // ver todos os chamados do projeto (se permitido)
 let portalReplyEvidences = [];         // evidências anexadas a uma resposta/comentário
 let portalClientAccess = [];           // linhas de acesso do cliente (com can_view_all)
+let portalMyName = '';                 // nome do usuário logado (evita "Anônimo")
 
 const PORTAL_STATUSES = ['Aberto','Em Análise','Em Desenvolvimento','Aguardando Cliente','Resolvido','Fechado'];
 const PORTAL_PRIORITIES = ['Baixa','Média','Alta','Crítica'];
@@ -34,6 +35,30 @@ const STATUS_COLORS = {
     'Aguardando Cliente':'#e6a800', 'Resolvido':'#1e8e3e', 'Fechado':'#555'
 };
 
+// --- TEMAS (valem no app de testes E no portal, via variáveis --bb-*) ---
+const PORTAL_THEMES = {
+    azul:   { name: 'Azul',   vars: { '--bb-copper':'#3b6ff0','--bb-copper-d':'#2a55c4','--bb-bg':'#eef0f4','--bb-surface':'#ffffff','--bb-border':'#e5e8ef' } },
+    verde:  { name: 'Verde',  vars: { '--bb-copper':'#1e8e3e','--bb-copper-d':'#14632b','--bb-bg':'#eef4f0','--bb-surface':'#ffffff','--bb-border':'#dbe7df' } },
+    indigo: { name: 'Índigo', vars: { '--bb-copper':'#5b4bd0','--bb-copper-d':'#3f2fae','--bb-bg':'#f0eff8','--bb-surface':'#ffffff','--bb-border':'#e4e0f0' } }
+};
+function portalCurrentTheme() {
+    try { return localStorage.getItem('portalTheme') || 'azul'; } catch (e) { return 'azul'; }
+}
+function portalApplyTheme(name) {
+    const t = PORTAL_THEMES[name] || PORTAL_THEMES.azul;
+    const root = document.documentElement;
+    Object.entries(t.vars).forEach(([k, v]) => root.style.setProperty(k, v));
+    try { localStorage.setItem('portalTheme', name); } catch (e) {}
+}
+function portalThemePicker() {
+    const cur = portalCurrentTheme();
+    return `<select onchange="portalApplyTheme(this.value)" title="Tema de cores" style="padding:6px 8px; border-radius:6px; border:1px solid var(--bb-border,#ccc); font-size:0.85em;">
+        ${Object.entries(PORTAL_THEMES).map(([k, t]) => `<option value="${k}" ${cur===k?'selected':''}>Tema: ${t.name}</option>`).join('')}
+      </select>`;
+}
+// Aplica o tema salvo o quanto antes (evita piscar).
+(function () { try { portalApplyTheme(portalCurrentTheme()); } catch (e) {} })();
+
 // --- DETECÇÃO DE PAPEL / ROTEAMENTO ----------------------------------
 async function portalOnAuth() {
     try {
@@ -43,10 +68,22 @@ async function portalOnAuth() {
         if (!client) return;
 
         const { data, error } = await client
-            .from('profiles').select('role').eq('id', session.user.id).single();
+            .from('profiles').select('role, full_name').eq('id', session.user.id).single();
         if (error) { console.warn('[portal] papel não determinado:', error.message); return; }
 
         portalRole = data.role;
+        portalMyName = data.full_name || session.user.email || 'Usuário';
+
+        // Usa o nome real do colaborador logado em todo o app (em vez de "Anônimo").
+        try {
+            if (typeof currentAuthor !== 'undefined' && (!currentAuthor || currentAuthor === 'Anônimo')) {
+                window.currentAuthor = portalMyName;
+            }
+            if (typeof userSettings !== 'undefined' && userSettings && (!userSettings.authorName || userSettings.authorName === 'Anônimo')) {
+                userSettings.authorName = portalMyName;
+            }
+        } catch (e) { /* ignore */ }
+
         if (portalRole === 'cliente') {
             await portalEnterClientMode();
         } else {
@@ -130,7 +167,7 @@ function portalRenderEvidence(ev, gridId, targetArray, ctx) {
     } else {
         media = document.createElement('div');
         media.style.cssText = 'display:flex; align-items:center; justify-content:center; height:100%; cursor:pointer; font-size:0.8em; text-align:center;';
-        media.innerHTML = '📎<br>Anexo';
+        media.innerHTML = '<br>Anexo';
         media.onclick = () => window.open(ev.src, '_blank');
     }
     wrap.appendChild(media);
@@ -157,7 +194,7 @@ function portalMakeEvidenceGrid(gridId, targetArray) {
         <label class="evidence-upload" style="width:110px; height:110px; border:2px dashed #bbb; border-radius:8px; display:flex; align-items:center; justify-content:center; text-align:center; cursor:pointer; font-size:0.82em; color:#666;">
           <input type="file" accept="image/*,video/*,.txt,.log,.pdf" multiple style="display:none"
                  onchange="portalHandleUpload(this.files, ${targetArray}, '${gridId}')">
-          <span>➕ Adicionar<br>evidência</span>
+          <span>Adicionar<br>evidência</span>
         </label>
       </div>`;
 }
@@ -252,9 +289,9 @@ function portalShowRecControls() {
     bar.style.cssText = 'position:fixed; bottom:22px; left:50%; transform:translateX(-50%); z-index:17000; background:#c0392b; color:#fff; border-radius:30px; padding:10px 18px; display:flex; align-items:center; gap:12px; box-shadow:0 4px 16px rgba(0,0,0,0.3);';
     bar.innerHTML = `<span style="width:12px; height:12px; border-radius:50%; background:#fff; animation:portalBlink 1s infinite;"></span>
         <span id="portal-rec-time" style="font-variant-numeric:tabular-nums;">00:00</span>
-        <button id="portal-draw-btn" onclick="portalToggleDraw()" style="border:none; background:rgba(255,255,255,0.25); color:#fff; border-radius:20px; padding:6px 12px; font-weight:600; cursor:pointer;">✏️ Desenhar</button>
-        <button id="portal-clear-btn" onclick="portalClearDraw()" style="display:none; border:none; background:rgba(255,255,255,0.25); color:#fff; border-radius:20px; padding:6px 12px; font-weight:600; cursor:pointer;">🧹 Limpar</button>
-        <button onclick="portalStopScreenRecording()" style="border:none; background:#fff; color:#c0392b; border-radius:20px; padding:6px 14px; font-weight:700; cursor:pointer;">⏹ Parar e anexar</button>`;
+        <button id="portal-draw-btn" onclick="portalToggleDraw()" style="border:none; background:rgba(255,255,255,0.25); color:#fff; border-radius:20px; padding:6px 12px; font-weight:600; cursor:pointer;">Desenhar</button>
+        <button id="portal-clear-btn" onclick="portalClearDraw()" style="display:none; border:none; background:rgba(255,255,255,0.25); color:#fff; border-radius:20px; padding:6px 12px; font-weight:600; cursor:pointer;">Limpar</button>
+        <button onclick="portalStopScreenRecording()" style="border:none; background:#fff; color:#c0392b; border-radius:20px; padding:6px 14px; font-weight:700; cursor:pointer;">Parar e anexar</button>`;
     document.body.appendChild(bar);
     portalRecState.timer = setInterval(() => {
         const s = Math.floor((Date.now() - portalRecState.start) / 1000);
@@ -294,7 +331,7 @@ function portalToggleDraw() {
     document.body.appendChild(canvas);
     portalDrawState = { canvas, end };
     const btn = document.getElementById('portal-draw-btn');
-    if (btn) { btn.textContent = '✏️ Parar desenho'; btn.style.background = '#fff'; btn.style.color = '#c0392b'; }
+    if (btn) { btn.textContent = 'Parar desenho'; btn.style.background = '#fff'; btn.style.color = '#c0392b'; }
     const clr = document.getElementById('portal-clear-btn');
     if (clr) clr.style.display = '';
 }
@@ -305,7 +342,7 @@ function portalStopDraw() {
     portalDrawState.canvas.remove();
     portalDrawState = null;
     const btn = document.getElementById('portal-draw-btn');
-    if (btn) { btn.textContent = '✏️ Desenhar'; btn.style.background = 'rgba(255,255,255,0.25)'; btn.style.color = '#fff'; }
+    if (btn) { btn.textContent = 'Desenhar'; btn.style.background = 'rgba(255,255,255,0.25)'; btn.style.color = '#fff'; }
     const clr = document.getElementById('portal-clear-btn');
     if (clr) clr.style.display = 'none';
 }
@@ -355,7 +392,7 @@ async function portalOpenVideoCommenter(ticketId, evidenceKey, src, canEdit) {
     modal.innerHTML = `
       <div style="background:#fff; border-radius:14px; width:min(1200px,98vw); max-height:94vh; overflow:hidden; display:flex; flex-direction:column;">
         <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid #eee;">
-          <h2 style="margin:0; font-size:1.05em; color:#1c2e4a;">🎬 Comentar vídeo por momento</h2>
+          <h2 style="margin:0; font-size:1.05em; color:#1c2e4a;">Comentar vídeo por momento</h2>
           <button onclick="document.getElementById('pvc-player')?.pause(); document.getElementById('${id}').remove();" style="border:none; background:none; font-size:1.6em; cursor:pointer;">&times;</button>
         </div>
         <div style="display:flex; flex:1; min-height:0;">
@@ -363,11 +400,11 @@ async function portalOpenVideoCommenter(ticketId, evidenceKey, src, canEdit) {
             <video id="pvc-player" src="${src}" controls style="max-width:100%; max-height:82vh;"></video>
           </div>
           <div style="flex:1; max-width:360px; display:flex; flex-direction:column; border-left:1px solid #eee; min-height:0;">
-            <div style="padding:10px 14px; border-bottom:1px solid #eee; font-weight:600; color:#1c2e4a; font-size:0.9em;">🕒 Comentários por momento</div>
+            <div style="padding:10px 14px; border-bottom:1px solid #eee; font-weight:600; color:#1c2e4a; font-size:0.9em;">Comentários por momento</div>
             <div id="pvc-list" style="flex:1; overflow-y:auto; padding:12px;"><em>Carregando...</em></div>
             ${canEdit ? `<div style="padding:12px; border-top:1px solid #eee;">
               <textarea id="pvc-text" placeholder="Descreva o que acontece neste momento..." style="width:100%; min-height:56px; padding:8px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;"></textarea>
-              <button onclick="portalAddVideoNote('${ticketId}','${keyAttr}')" style="border:none; background:#3b6ff0; color:#fff; border-radius:8px; padding:9px 14px; margin-top:6px; cursor:pointer; width:100%; font-weight:600;">💬 Comentar em <span id="pvc-cur">00:00</span></button>
+              <button onclick="portalAddVideoNote('${ticketId}','${keyAttr}')" style="border:none; background:#3b6ff0; color:#fff; border-radius:8px; padding:9px 14px; margin-top:6px; cursor:pointer; width:100%; font-weight:600;">Comentar em <span id="pvc-cur">00:00</span></button>
             </div>` : ''}
           </div>
         </div>
@@ -436,19 +473,20 @@ async function portalEnterClientMode() {
       <header style="background:linear-gradient(135deg,var(--bb-copper-d,#2a55c4),var(--bb-copper,#3b6ff0)); color:#fff; padding:14px 22px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 10px rgba(0,0,0,0.18);">
         <div style="display:flex; align-items:center; gap:12px;">
           <div style="background:#000; border-radius:10px; padding:6px 12px;"><img src="logologin.png" style="max-height:46px; display:block;" onerror="if(this.dataset.f!=='1'){this.dataset.f='1';this.src='logo-login.png';}else if(this.dataset.f!=='2'){this.dataset.f='2';this.src='logo.png';}else{this.parentElement.style.display='none';}"></div>
-          <strong style="font-size:1.15em;">🛟 Portal de Chamados</strong>
+          <strong style="font-size:1.15em;">Portal de Chamados</strong>
         </div>
         <div style="display:flex; align-items:center; gap:12px; font-size:0.9em;">
           <span id="portal-project-selector"></span>
-          <span>👤 ${email}</span>
-          <button onclick="portalOpenChangePassword()" style="border:none; background:rgba(255,255,255,0.2); color:#fff; border-radius:6px; padding:6px 12px; cursor:pointer;">🔑 Trocar senha</button>
+          ${portalThemePicker()}
+          <span>${email}</span>
+          <button onclick="portalOpenChangePassword()" style="border:none; background:rgba(255,255,255,0.2); color:#fff; border-radius:6px; padding:6px 12px; cursor:pointer;">Trocar senha</button>
           <button onclick="sbSignOut()" style="border:none; background:var(--priority-high,#e5484d); color:#fff; border-radius:6px; padding:6px 12px; cursor:pointer;">Sair</button>
         </div>
       </header>
       <main style="max-width:1040px; margin:0 auto; padding:22px;">
         <div id="portal-summary" style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:18px;"></div>
         <div id="portal-chart-wrap" style="background:var(--bb-surface,#fff); border:1px solid var(--bb-border,#e5e8ef); border-radius:12px; padding:16px; margin-bottom:18px; box-shadow:0 1px 4px rgba(0,0,0,0.05);">
-          <h3 style="margin:0 0 10px; font-size:1em; color:var(--bb-txt1,#1a1d26);">📊 Meus chamados por status</h3>
+          <h3 style="margin:0 0 10px; font-size:1em; color:var(--bb-txt1,#1a1d26);">Meus chamados por status</h3>
           <div style="height:230px; position:relative;"><canvas id="portal-status-chart"></canvas></div>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
@@ -467,8 +505,8 @@ async function portalEnterClientMode() {
               <option value="vencimento">Vencimento do SLA</option>
               <option value="prioridade">Prioridade</option>
             </select>
-            <button onclick="portalShowSlaInfo()" title="Ver prazos de atendimento" style="border:1px solid var(--bb-border,#ccc); background:var(--bb-surface,#fff); color:var(--bb-txt2,#555); border-radius:8px; padding:8px 12px; cursor:pointer; font-size:0.85em;">ℹ️ Prazos (SLA)</button>
-            <button onclick="portalOpenNewTicketModal()" style="border:none; background:var(--bb-copper,#3b6ff0); color:#fff; border-radius:8px; padding:10px 16px; font-weight:600; cursor:pointer;">➕ Abrir chamado</button>
+            <button onclick="portalShowSlaInfo()" title="Ver prazos de atendimento" style="border:1px solid var(--bb-border,#ccc); background:var(--bb-surface,#fff); color:var(--bb-txt2,#555); border-radius:8px; padding:8px 12px; cursor:pointer; font-size:0.85em;">Prazos (SLA)</button>
+            <button onclick="portalOpenNewTicketModal()" style="border:none; background:var(--bb-copper,#3b6ff0); color:#fff; border-radius:8px; padding:10px 16px; font-weight:600; cursor:pointer;">Abrir chamado</button>
           </div>
         </div>
         <div id="portal-ticket-list"><em>Carregando...</em></div>
@@ -610,7 +648,7 @@ async function portalRefreshClientView() {
 function portalTicketRow(t, showRequester) {
     const sla = portalSlaState(t);
     const mod = t.support_modules?.name || '—';
-    const who = showRequester ? ` · 👤 ${t.profiles?.full_name || '—'}` : '';
+    const who = showRequester ? ` · ${t.profiles?.full_name || '—'}` : '';
     return `
       <div onclick="portalOpenTicketDetail('${t.id}')" style="background:var(--bb-surface,#fff); border:1px solid var(--bb-border,#e5e8ef); border-radius:10px; padding:14px 16px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.05); cursor:pointer; display:flex; align-items:center; gap:14px; border-left:5px solid ${STATUS_COLORS[t.status]||'#888'};">
         <div style="font-weight:700; color:var(--bb-copper,#1c2e4a); min-width:56px;">#${t.display_id}</div>
@@ -631,12 +669,12 @@ function portalBadge(text, color) {
 
 // Estado de SLA (usa o prazo de resolução calculado no banco)
 function portalSlaState(t) {
-    if (['Resolvido','Fechado'].includes(t.status)) return { breached:false, badge: portalBadge('✔ no prazo','#1e8e3e') };
+    if (['Resolvido','Fechado'].includes(t.status)) return { breached:false, badge: portalBadge('no prazo','#1e8e3e') };
     if (!t.sla_resolution_due) return { breached:false, badge:'' };
     const due = new Date(t.sla_resolution_due).getTime();
     const now = Date.now();
     const diffH = (due - now) / 36e5;
-    if (diffH < 0) return { breached:true, badge: portalBadge('⏰ SLA estourado','#c0392b') };
+    if (diffH < 0) return { breached:true, badge: portalBadge('SLA estourado','#c0392b') };
     const label = diffH >= 24 ? `${Math.floor(diffH/24)}d restantes` : `${Math.ceil(diffH)}h restantes`;
     const color = diffH < 4 ? '#e67e22' : '#1e8e3e';
     return { breached:false, badge: portalBadge('SLA: ' + label, color) };
@@ -659,7 +697,7 @@ function portalSlaBar(t) {
         label = breached ? 'Concluído fora do prazo' : 'Concluído dentro do SLA';
     } else {
         color = breached ? '#c0392b' : (pct >= 70 ? '#e67e22' : '#1e8e3e');
-        label = breached ? '⏰ SLA estourado (100%+)' : `${Math.round(pct)}% do SLA consumido`;
+        label = breached ? 'SLA estourado (100%+)' : `${Math.round(pct)}% do SLA consumido`;
     }
     return `<div style="margin-top:6px; max-width:340px;">
         <div style="height:7px; background:#e6e6e6; border-radius:4px; overflow:hidden;">
@@ -676,7 +714,7 @@ function portalOpenNewTicketModal() {
     if (!proj) { alert('Nenhum projeto disponível.'); return; }
     const modules = proj.modules || [];
 
-    const modal = portalModalShell('novo-chamado-modal', '➕ Abrir novo chamado', `
+    const modal = portalModalShell('novo-chamado-modal', 'Abrir novo chamado', `
         <label style="font-weight:600; font-size:0.9em;">Título</label>
         <input id="pt-title" class="form-input" placeholder="Resumo do problema" style="width:100%; margin:4px 0 12px; padding:10px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
 
@@ -702,7 +740,7 @@ function portalOpenNewTicketModal() {
         <label style="font-weight:600; font-size:0.9em;">Evidências (imagens, vídeos, arquivos)</label>
         <div style="display:flex; align-items:center; gap:10px; margin:6px 0;">
           <button type="button" onclick="portalStartScreenRecording(portalNewEvidences, 'pt-evidence-grid')"
-                  style="border:none; background:#c0392b; color:#fff; border-radius:8px; padding:8px 14px; font-weight:600; cursor:pointer;">🎥 Gravar tela</button>
+                  style="border:none; background:#c0392b; color:#fff; border-radius:8px; padding:8px 14px; font-weight:600; cursor:pointer;">Gravar tela</button>
           <span style="font-size:0.82em; color:#888;">ou anexe arquivo abaixo · ou cole um print com Ctrl+V</span>
         </div>
         ${portalMakeEvidenceGrid('pt-evidence-grid', 'portalNewEvidences')}
@@ -767,7 +805,7 @@ async function portalSubmitTicket() {
         await portalRefreshClientView();
     } catch (e) {
         statusEl.style.color = '#c0392b';
-        statusEl.textContent = '❌ ' + e.message;
+        statusEl.textContent = '' + e.message;
         btn.disabled = false;
     }
 }
@@ -813,24 +851,24 @@ async function portalOpenTicketDetail(ticketId, internalView = false) {
         ${portalSlaBar(t)}
         ${reopenEligible ? `<div style="margin:10px 0; padding:10px; background:#eef7ff; border-radius:8px; font-size:0.85em;">
             Seu chamado foi resolvido. Se o problema persistir, você pode reabri-lo.
-            <button onclick="portalReopenTicket('${t.id}')" style="border:none; background:#e67e22; color:#fff; border-radius:8px; padding:8px 14px; margin-top:6px; cursor:pointer; font-weight:600; display:block;">🔄 Reabrir chamado</button>
+            <button onclick="portalReopenTicket('${t.id}')" style="border:none; background:#e67e22; color:#fff; border-radius:8px; padding:8px 14px; margin-top:6px; cursor:pointer; font-weight:600; display:block;">Reabrir chamado</button>
             <div style="font-size:0.9em; color:#888; margin-top:4px;">Após 2 dias sem reabertura, o chamado será encerrado definitivamente.</div>
           </div>` : ''}
-        ${definitivelyClosed ? `<div style="margin:10px 0; padding:10px; background:#f0f0f0; border-radius:8px; font-size:0.85em; color:#666;">🔒 Chamado encerrado. O prazo de reabertura expirou.</div>` : ''}`;
+        ${definitivelyClosed ? `<div style="margin:10px 0; padding:10px; background:#f0f0f0; border-radius:8px; font-size:0.85em; color:#666;">Chamado encerrado. O prazo de reabertura expirou.</div>` : ''}`;
 
     const isClosed = t.status === 'Fechado';
     const replyBlock = isClosed ? `
-        <div style="padding:12px; background:#f0f0f0; border-radius:8px; color:#666; font-size:0.88em;">🔒 Chamado fechado. Não é possível adicionar comentários ou evidências.</div>
+        <div style="padding:12px; background:#f0f0f0; border-radius:8px; color:#666; font-size:0.88em;">Chamado fechado. Não é possível adicionar comentários ou evidências.</div>
     ` : `
         <textarea id="ptc-body" placeholder="Escreva uma resposta..." style="width:100%; min-height:70px; padding:10px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;"></textarea>
         <div style="display:flex; align-items:center; gap:8px; margin:6px 0; flex-wrap:wrap;">
-          <button type="button" onclick="portalStartScreenRecording(portalReplyEvidences, 'ptc-evidence-grid')" style="border:none; background:#c0392b; color:#fff; border-radius:8px; padding:7px 12px; font-weight:600; cursor:pointer; font-size:0.85em;">🎥 Gravar tela</button>
+          <button type="button" onclick="portalStartScreenRecording(portalReplyEvidences, 'ptc-evidence-grid')" style="border:none; background:#c0392b; color:#fff; border-radius:8px; padding:7px 12px; font-weight:600; cursor:pointer; font-size:0.85em;">Gravar tela</button>
           <span style="font-size:0.8em; color:#888;">anexe evidência abaixo · ou cole um print com Ctrl+V</span>
         </div>
         ${portalMakeEvidenceGrid('ptc-evidence-grid', 'portalReplyEvidences')}
         ${internalView ? `<div style="margin:6px 0; display:flex; gap:16px; flex-wrap:wrap;">
-            <label style="font-size:0.82em;"><input type="checkbox" id="ptc-internal"> 🔒 Nota interna (o cliente NÃO vê)</label>
-            <label style="font-size:0.82em;"><input type="checkbox" id="ptc-resolution"> ✅ Marcar como resolução (fecha o chamado)</label>
+            <label style="font-size:0.82em;"><input type="checkbox" id="ptc-internal"> Nota interna (o cliente NÃO vê)</label>
+            <label style="font-size:0.82em;"><input type="checkbox" id="ptc-resolution"> Marcar como resolução (fecha o chamado)</label>
           </div>` : ''}
         <div style="text-align:right; margin-top:8px;">
           <button onclick="portalAddComment('${t.id}', ${internalView})" style="border:none; background:#3b6ff0; color:#fff; border-radius:8px; padding:9px 18px; font-weight:600; cursor:pointer;">Enviar resposta</button>
@@ -889,8 +927,8 @@ async function portalLoadComments(ticketId, internalView) {
         const mine = c.author_role === 'interno';
         let bg = c.internal_note ? '#fff6e0' : (mine ? '#eaf1ff' : '#f0f0f0');
         let border = '';
-        let tag = c.internal_note ? ' 🔒 nota interna' : '';
-        if (c.is_resolution) { bg = '#e6f7ea'; border = 'border:1px solid #1e8e3e;'; tag = ' ✅ resolução'; }
+        let tag = c.internal_note ? ' nota interna' : '';
+        if (c.is_resolution) { bg = '#e6f7ea'; border = 'border:1px solid #1e8e3e;'; tag = ' resolução'; }
         const align = mine ? 'margin-left:auto;' : '';
         const evGridId = `cmt-ev-${idx}`;
         const hasEv = Array.isArray(c.evidences) && c.evidences.length;
@@ -932,7 +970,7 @@ async function portalAddComment(ticketId, internalView) {
     const { error } = await client.from('support_ticket_comments').insert({
         ticket_id: ticketId,
         author_id: session.user.id,
-        author_name: (typeof userSettings !== 'undefined' && userSettings.authorName) || session.user.email,
+        author_name: portalMyName || (typeof userSettings !== 'undefined' && userSettings.authorName) || session.user.email,
         author_role: internalView ? 'interno' : 'cliente',
         body: body || '(evidência anexada)',
         evidences,
@@ -995,7 +1033,7 @@ function portalShowSlaInfo() {
           <td style="padding:8px; border-bottom:1px solid var(--bb-border,#eee); text-align:center;">${fmt(s.resolution_hours)}</td>
         </tr>`).join('') : '<tr><td colspan="3" style="padding:10px; color:#999;">Nenhum SLA definido para este projeto.</td></tr>';
 
-    portalModalShell('portal-sla-modal', 'ℹ️ Prazos de atendimento (SLA)', `
+    portalModalShell('portal-sla-modal', 'Prazos de atendimento (SLA)', `
         <p style="font-size:0.9em; color:var(--bb-txt2,#666); margin-top:0;">
           O <b>SLA</b> é o prazo com que nos comprometemos para cada chamado, conforme a <b>prioridade</b>.
           O prazo começa a contar na abertura do chamado.
@@ -1018,7 +1056,7 @@ function portalShowSlaInfo() {
 
 // --- TROCA DE SENHA (requerente) -------------------------------------
 function portalOpenChangePassword() {
-    portalModalShell('portal-pass-modal', '🔑 Trocar minha senha', `
+    portalModalShell('portal-pass-modal', 'Trocar minha senha', `
         <label style="font-weight:600; font-size:0.9em;">Nova senha</label>
         <input id="pp-new" type="password" placeholder="Mínimo 6 caracteres" style="width:100%; margin:4px 0 12px; padding:10px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
         <label style="font-weight:600; font-size:0.9em;">Confirmar nova senha</label>
@@ -1040,8 +1078,8 @@ async function portalSubmitNewPassword() {
     if (pass !== conf) { st.style.color = '#c0392b'; st.textContent = 'As senhas não conferem.'; return; }
     st.style.color = '#3b6ff0'; st.textContent = 'Salvando...';
     const { error } = await client.auth.updateUser({ password: pass });
-    if (error) { st.style.color = '#c0392b'; st.textContent = '❌ ' + error.message; return; }
-    st.style.color = '#1e8e3e'; st.textContent = '✅ Senha alterada com sucesso!';
+    if (error) { st.style.color = '#c0392b'; st.textContent = '' + error.message; return; }
+    st.style.color = '#1e8e3e'; st.textContent = 'Senha alterada com sucesso!';
     setTimeout(() => portalCloseModal('portal-pass-modal'), 1500);
 }
 
@@ -1068,12 +1106,12 @@ async function portalAdminInvoke(body) {
 }
 
 async function portalOpenAccessMgmt() {
-    portalModalShell('portal-access-modal', '👤 Gerenciar Acessos', `
+    portalModalShell('portal-access-modal', 'Gerenciar Acessos', `
         <input id="pac-search" oninput="portalRenderUserList()" placeholder="Buscar por nome ou e-mail..." class="form-input"
                style="width:100%; padding:9px; border:1px solid var(--bb-border,#ccc); border-radius:8px; box-sizing:border-box; margin-bottom:12px;">
         <div id="pac-status" style="font-size:0.85em; color:var(--bb-txt2,#888); margin-bottom:8px;">Carregando usuários...</div>
         <div id="pac-list"></div>
-    `);
+    `, 940);
     try {
         const data = await portalAdminInvoke({ action: 'list_users' });
         portalUsersData = data.users || [];
@@ -1092,29 +1130,57 @@ function portalRenderUserList() {
     const users = portalUsersData.filter(u =>
         !term || (u.full_name || '').toLowerCase().includes(term) || (u.email || '').toLowerCase().includes(term));
 
-    box.innerHTML = users.map(u => {
-        const isInterno = u.role === 'interno';
-        const roleColor = isInterno ? '#2980b9' : '#8e44ad';
-        const projSummary = isInterno ? 'Acesso total (colaborador)'
-            : (u.projects.length ? u.projects.map(p => p.project_name + (p.can_view_all ? ' ⭐' : '')).join(', ') : 'Nenhum projeto');
-        const expanded = portalAccessExpanded === u.id;
-        return `
-          <div style="border:1px solid var(--bb-border,#e5e8ef); border-radius:10px; padding:12px 14px; margin-bottom:8px; background:var(--bb-surface,#fff);">
-            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-              <div style="flex:1; min-width:160px;">
-                <div style="font-weight:600;">${u.full_name || '(sem nome)'}</div>
-                <div style="font-size:0.8em; color:var(--bb-txt2,#888);">${u.email}</div>
-              </div>
-              <select onchange="portalSetUserRole('${u.id}', this.value)" style="padding:7px; border-radius:6px; border:1px solid ${roleColor}; color:${roleColor}; font-weight:600; font-size:0.85em;">
-                <option value="cliente" ${!isInterno?'selected':''}>Cliente (portal)</option>
-                <option value="interno" ${isInterno?'selected':''}>Colaborador (plano de testes)</option>
-              </select>
-              ${!isInterno ? `<button onclick="portalAccessExpanded='${expanded?'':u.id}'; portalRenderUserList()" style="border:none; background:var(--bb-copper,#3b6ff0); color:#fff; border-radius:6px; padding:7px 12px; cursor:pointer; font-size:0.85em;">${expanded?'Fechar':'Projetos'}</button>` : ''}
-            </div>
-            ${!isInterno ? `<div style="font-size:0.78em; color:var(--bb-txt2,#999); margin-top:6px;">📁 ${projSummary}</div>` : ''}
-            ${(!isInterno && expanded) ? portalRenderUserProjects(u) : ''}
-          </div>`;
-    }).join('') || '<em>Nenhum usuário encontrado.</em>';
+    const colaboradores = users.filter(u => u.role === 'interno');
+    const clientes = users.filter(u => u.role !== 'interno');
+
+    const sectionHeader = (label, count, color) => `
+        <div style="display:flex; align-items:center; gap:10px; margin:14px 0 8px;">
+          <span style="width:10px; height:10px; border-radius:50%; background:${color};"></span>
+          <strong style="color:var(--bb-txt1,#222);">${label}</strong>
+          <span style="font-size:0.8em; color:var(--bb-txt2,#999);">(${count})</span>
+          <span style="flex:1; height:1px; background:var(--bb-border,#e0e0e0);"></span>
+        </div>`;
+
+    let html = '';
+    html += sectionHeader('Colaboradores — plano de testes', colaboradores.length, '#2980b9');
+    html += colaboradores.length ? colaboradores.map(portalUserCard).join('') : '<div style="font-size:0.85em; color:#999; margin-bottom:8px;">Nenhum colaborador.</div>';
+    html += sectionHeader('Clientes — portal de chamados', clientes.length, '#8e44ad');
+    html += clientes.length ? clientes.map(portalUserCard).join('') : '<div style="font-size:0.85em; color:#999;">Nenhum cliente.</div>';
+    box.innerHTML = html;
+}
+
+function portalUserCard(u) {
+    const isInterno = u.role === 'interno';
+    const roleColor = isInterno ? '#2980b9' : '#8e44ad';
+    const projSummary = isInterno ? 'Acesso total (colaborador)'
+        : (u.projects.length ? u.projects.map(p => p.project_name + (p.can_view_all ? ' (supervisor)' : '')).join(', ') : 'Nenhum projeto');
+    const expanded = portalAccessExpanded === u.id;
+    return `
+      <div style="border:1px solid var(--bb-border,#e5e8ef); border-radius:10px; padding:12px 14px; margin-bottom:8px; background:var(--bb-surface,#fff);">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <div style="flex:1; min-width:160px;">
+            <div style="font-weight:600; color:var(--bb-txt1,#222);">${u.full_name || '(sem nome)'}</div>
+            <div style="font-size:0.8em; color:var(--bb-txt2,#888);">${u.email}</div>
+          </div>
+          <select onchange="portalSetUserRole('${u.id}', this.value)" style="padding:7px; border-radius:6px; border:1px solid ${roleColor}; color:${roleColor}; font-weight:600; font-size:0.85em; background:var(--bb-surface,#fff);">
+            <option value="cliente" ${!isInterno?'selected':''}>Cliente (portal)</option>
+            <option value="interno" ${isInterno?'selected':''}>Colaborador (testes)</option>
+          </select>
+          ${!isInterno ? `<button onclick="portalAccessExpanded='${expanded?'':u.id}'; portalRenderUserList()" style="border:none; background:var(--bb-copper,#3b6ff0); color:#fff; border-radius:6px; padding:7px 12px; cursor:pointer; font-size:0.85em;">${expanded?'Fechar':'Projetos'}</button>` : ''}
+          <button onclick="portalDeleteUser('${u.id}', '${(u.email||'').replace(/'/g,"")}')" title="Excluir usuário" style="border:1px solid var(--priority-high,#e5484d); background:var(--bb-surface,#fff); color:var(--priority-high,#e5484d); border-radius:6px; padding:7px 10px; cursor:pointer; font-size:0.85em;">Excluir</button>
+        </div>
+        ${!isInterno ? `<div style="font-size:0.78em; color:var(--bb-txt2,#999); margin-top:6px;">Projetos: ${projSummary}</div>` : ''}
+        ${(!isInterno && expanded) ? portalRenderUserProjects(u) : ''}
+      </div>`;
+}
+
+async function portalDeleteUser(userId, email) {
+    if (!confirm(`Excluir definitivamente o usuário ${email}?\n\nIsso remove o login, os acessos e o perfil. Os chamados que ele abriu permanecem no histórico.`)) return;
+    try {
+        await portalAdminInvoke({ action: 'delete_user', user_id: userId });
+        portalUsersData = portalUsersData.filter(u => u.id !== userId);
+        portalRenderUserList();
+    } catch (e) { alert('Erro ao excluir: ' + e.message); }
 }
 
 function portalRenderUserProjects(u) {
@@ -1131,7 +1197,7 @@ function portalRenderUserProjects(u) {
                 </label>
                 <label style="display:flex; align-items:center; gap:6px; cursor:pointer; opacity:${has?1:0.4};">
                   <input type="checkbox" ${sup?'checked':''} ${has?'':'disabled'} onchange="portalSetProjectAccess('${u.id}','${pr.id}', true, this.checked)">
-                  ⭐ Supervisor (vê todos)
+                  Supervisor (vê todos)
                 </label>
               </div>`;
         }).join('')}
@@ -1168,14 +1234,14 @@ async function portalSetProjectAccess(userId, projectId, grant, canViewAll) {
 // =====================================================================
 //  SHELL DE MODAL GENÉRICO (usado pelo portal)
 // =====================================================================
-function portalModalShell(id, titleText, innerHTML) {
+function portalModalShell(id, titleText, innerHTML, maxWidth) {
     document.getElementById(id)?.remove();
     const modal = document.createElement('div');
     modal.id = id;
     modal.style.cssText = 'position:fixed; inset:0; z-index:16000; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; padding:16px;';
     modal.onclick = (e) => { if (e.target === modal) portalCloseModal(id); };
     modal.innerHTML = `
-      <div style="background:var(--bb-surface,#fff); border:1px solid var(--bb-border,#e5e8ef); border-radius:14px; width:min(680px,96vw); max-height:92vh; overflow-y:auto; padding:22px; color:var(--bb-txt1,#1a1d26);">
+      <div style="background:var(--bb-surface,#fff); border:1px solid var(--bb-border,#e5e8ef); border-radius:14px; width:min(${maxWidth || 680}px,96vw); max-height:92vh; overflow-y:auto; padding:22px; color:var(--bb-txt1,#1a1d26);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
           <h2 style="margin:0; font-size:1.2em; color:var(--bb-txt1,#1a1d26);">${titleText}</h2>
           <button onclick="portalCloseModal('${id}')" style="border:none; background:none; font-size:1.5em; cursor:pointer; color:var(--bb-txt2,#888);">&times;</button>
@@ -1202,21 +1268,26 @@ function portalInjectInternalButtons() {
 
     const queueBtn = document.createElement('button');
     queueBtn.className = 'btn'; queueBtn.style.backgroundColor = '#3b6ff0';
-    queueBtn.textContent = '🛟 Fila de Chamados';
+    queueBtn.textContent = 'Fila de Chamados';
     queueBtn.onclick = portalOpenInternalQueue;
     box.appendChild(queueBtn);
 
     const adminBtn = document.createElement('button');
     adminBtn.className = 'btn'; adminBtn.style.backgroundColor = '#8e44ad'; adminBtn.style.marginTop = '6px';
-    adminBtn.textContent = '⚙️ Gerenciar Portal';
+    adminBtn.textContent = 'Gerenciar Portal';
     adminBtn.onclick = portalOpenAdmin;
     box.appendChild(adminBtn);
 
     const accessBtn = document.createElement('button');
     accessBtn.className = 'btn'; accessBtn.style.backgroundColor = '#16a085'; accessBtn.style.marginTop = '6px';
-    accessBtn.textContent = '👤 Gerenciar Acessos';
+    accessBtn.textContent = 'Gerenciar Acessos';
     accessBtn.onclick = portalOpenAccessMgmt;
     box.appendChild(accessBtn);
+
+    const themeWrap = document.createElement('div');
+    themeWrap.style.marginTop = '8px';
+    themeWrap.innerHTML = portalThemePicker();
+    box.appendChild(themeWrap);
 
     sidebar.appendChild(box);
 }
@@ -1228,12 +1299,19 @@ function portalEnsureQueueStyle() {
     st.id = 'portal-queue-style';
     st.textContent = `
       #portal-queue-view { position:fixed; inset:0; z-index:14000; background:var(--bb-bg,#f4f6fb); overflow-y:auto; padding:24px; box-sizing:border-box; }
+      #portal-queue-view .ticket-card { background:var(--bb-surface,#fff) !important; color:var(--bb-txt1,#1a1d26) !important; border:1px solid var(--bb-border,#e5e8ef) !important; box-shadow:0 1px 4px rgba(0,0,0,0.06) !important; }
+      #portal-queue-view .ticket-card .ticket-card-title { color:var(--bb-txt1,#1a1d26) !important; }
+      #portal-queue-view .ticket-card p { color:var(--bb-txt2,#6b7280) !important; }
+      #portal-queue-view .ticket-card .ticket-card-footer { color:var(--bb-txt2,#6b7280) !important; }
+      .ticket-card.status-aberto { border-left:5px solid ${STATUS_COLORS['Aberto']} !important; }
+      .ticket-card.status-em-análise { border-left:5px solid ${STATUS_COLORS['Em Análise']} !important; }
+      .ticket-card.status-em-desenvolvimento { border-left:5px solid ${STATUS_COLORS['Em Desenvolvimento']} !important; }
+      .ticket-card.status-aguardando-cliente { border-left:5px solid ${STATUS_COLORS['Aguardando Cliente']} !important; }
+      .ticket-card.status-resolvido { border-left:5px solid ${STATUS_COLORS['Resolvido']} !important; }
+      .ticket-card.status-fechado { border-left:5px solid ${STATUS_COLORS['Fechado']} !important; }
       .ticket-kanban-header.status-aguardando-cliente { border-color:${STATUS_COLORS['Aguardando Cliente']}; }
       .ticket-kanban-header.status-resolvido { border-color:${STATUS_COLORS['Resolvido']}; }
-      .ticket-card.status-aguardando-cliente { border-left-color:${STATUS_COLORS['Aguardando Cliente']}; }
-      .ticket-card.status-resolvido { border-left-color:${STATUS_COLORS['Resolvido']}; }
       .ticket-priority-badge.priority-crítica { background-color:var(--priority-critical,#c0392b); }
-      .pq-sla { font-size:0.72rem; font-weight:600; padding:2px 8px; border-radius:10px; }
     `;
     document.head.appendChild(st);
 }
@@ -1248,9 +1326,9 @@ async function portalOpenInternalQueue() {
     view.id = 'portal-queue-view';
     view.innerHTML = `
       <div class="ticket-management-header">
-        <h2>🛟 Fila de Chamados de Clientes</h2>
+        <h2>Fila de Chamados de Clientes</h2>
         <p>Acompanhe, priorize e resolva os chamados abertos pelos clientes no portal.</p>
-        <button class="btn" style="background-color:#6c757d; margin-top:10px;" onclick="document.getElementById('portal-queue-view').remove()">⬅️ Voltar</button>
+        <button class="btn" style="background-color:#6c757d; margin-top:10px;" onclick="document.getElementById('portal-queue-view').remove()">Voltar</button>
       </div>
       <div class="ticket-filters">
         <select id="pq-project" class="form-select" onchange="portalRefreshInternalQueue()">
@@ -1349,7 +1427,7 @@ async function portalRefreshInternalQueue(populateRequesters = false) {
             ${portalSlaBar(t)}
             <div class="ticket-card-footer">
               <span class="ticket-origin">${t.support_projects?.name||''} · ${t.support_modules?.name||'—'}</span>
-              <span class="ticket-assignee">👤 ${t.profiles?.full_name || '—'}</span>
+              <span class="ticket-assignee">${t.profiles?.full_name || '—'}</span>
             </div>`;
         cont.appendChild(card);
     });
@@ -1358,12 +1436,12 @@ async function portalRefreshInternalQueue(populateRequesters = false) {
 // --- ADMIN: projetos, módulos, SLA, convidar clientes ----------------
 async function portalOpenAdmin() {
     await portalLoadContext();
-    portalModalShell('portal-admin-modal', '⚙️ Gerenciar Portal de Chamados', `
+    portalModalShell('portal-admin-modal', 'Gerenciar Portal de Chamados', `
         <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
           <select id="pa-project" onchange="portalAdminSelectedProject=this.value; portalRenderAdminBody()" style="flex:1; padding:9px; border-radius:6px; border:1px solid #ccc;">
             ${portalProjects.map(p => `<option value="${p.id}" ${p.id===portalAdminSelectedProject?'selected':''}>${p.name}</option>`).join('')}
           </select>
-          <button onclick="portalCreateProject()" style="border:none; background:#3ecf8e; color:#fff; border-radius:6px; padding:9px 14px; cursor:pointer;">➕ Novo projeto</button>
+          <button onclick="portalCreateProject()" style="border:none; background:#3ecf8e; color:#fff; border-radius:6px; padding:9px 14px; cursor:pointer;">Novo projeto</button>
         </div>
         <div id="pa-body"></div>
     `);
@@ -1378,7 +1456,7 @@ function portalRenderAdminBody() {
 
     body.innerHTML = `
       <section style="margin-bottom:18px;">
-        <h4 style="margin:0 0 8px;">📦 Módulos</h4>
+        <h4 style="margin:0 0 8px;">Módulos</h4>
         <div id="pa-modules" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
           ${(proj.modules||[]).map(m => `<span style="background:#eef2fb; border:1px solid #ccd6ee; border-radius:14px; padding:4px 10px; font-size:0.85em;">${m.name}
             <a href="#" onclick="portalDeleteModule('${m.id}');return false;" style="color:#c0392b; text-decoration:none; margin-left:4px;">&times;</a></span>`).join('') || '<em style="color:#999;">Nenhum módulo.</em>'}
@@ -1390,7 +1468,7 @@ function portalRenderAdminBody() {
       </section>
 
       <section style="margin-bottom:18px;">
-        <h4 style="margin:0 0 8px;">⏱️ SLA por prioridade (horas)</h4>
+        <h4 style="margin:0 0 8px;">SLA por prioridade (horas)</h4>
         <table style="width:100%; border-collapse:collapse; font-size:0.88em;">
           <tr style="text-align:left; color:#666;"><th>Prioridade</th><th>1º atendimento</th><th>Resolução</th></tr>
           ${PORTAL_PRIORITIES.map(p => {
@@ -1406,7 +1484,7 @@ function portalRenderAdminBody() {
       </section>
 
       <section style="border-top:1px solid #eee; padding-top:14px;">
-        <h4 style="margin:0 0 8px;">👥 Convidar cliente para "${proj.name}"</h4>
+        <h4 style="margin:0 0 8px;">Convidar cliente para "${proj.name}"</h4>
         <div style="display:flex; gap:6px; flex-wrap:wrap;">
           <input id="pa-cli-name" placeholder="Nome" style="flex:1; min-width:120px; padding:8px; border:1px solid #ccc; border-radius:6px;">
           <input id="pa-cli-email" placeholder="E-mail" style="flex:1.4; min-width:160px; padding:8px; border:1px solid #ccc; border-radius:6px;">
@@ -1480,10 +1558,10 @@ async function portalInviteClient() {
     const { data, error } = await client.functions.invoke('portal-admin', {
         body: { action: 'create_client', email, password, full_name: name, project_ids: [portalCurrentProject().id], can_view_all: canViewAll }
     });
-    if (error) { statusEl.style.color='#c0392b'; statusEl.textContent='❌ ' + (error.message || 'Falha ao criar cliente.'); return; }
-    if (data && data.error) { statusEl.style.color='#c0392b'; statusEl.textContent='❌ ' + data.error; return; }
+    if (error) { statusEl.style.color='#c0392b'; statusEl.textContent='' + (error.message || 'Falha ao criar cliente.'); return; }
+    if (data && data.error) { statusEl.style.color='#c0392b'; statusEl.textContent='' + data.error; return; }
     statusEl.style.color = '#1e8e3e';
-    statusEl.textContent = (data && data.message) ? '✅ ' + data.message : `✅ Cliente ${email} criado com acesso a "${portalCurrentProject().name}".`;
+    statusEl.textContent = (data && data.message) ? '' + data.message : `Cliente ${email} criado com acesso a "${portalCurrentProject().name}".`;
     document.getElementById('pa-cli-name').value = '';
     document.getElementById('pa-cli-email').value = '';
     document.getElementById('pa-cli-pass').value = '';
