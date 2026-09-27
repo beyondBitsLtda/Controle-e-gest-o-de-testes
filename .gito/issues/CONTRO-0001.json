@@ -1,0 +1,23 @@
+{
+  "id": "CONTRO-0001",
+  "titulo": "O modulo de controle de usuários não funciona mais.",
+  "descricao": "Deposi que migramos a hospedagem da vercel para o github não funciona mais, a janela abre e simplismente não carrega os usuários para que eu faça a gerencia.",
+  "tipo": "bug",
+  "prioridade": "alta",
+  "status": "aberta",
+  "responsavel": "Brayan Rodrigues",
+  "prazo": "2026-09-28",
+  "versaoAlvo": "0.1.0",
+  "criadaEm": "2026-09-27T05:28:22.801Z",
+  "criadaPor": "Brayan Rodrigues <brayan.rodrigues@delp.com.br>",
+  "atualizadaEm": "2026-09-27T05:28:22.801Z",
+  "comentarios": [],
+  "evidencias": [],
+  "historico": [
+    {
+      "quando": "2026-09-27T05:28:22.801Z",
+      "autor": "Brayan Rodrigues <brayan.rodrigues@delp.com.br>",
+      "mudanca": "issue criada"
+    }
+  ]
+}
