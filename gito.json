@@ -1,0 +1,168 @@
+{
+  "$gito": 1,
+  "aplicacao": {
+    "nome": "Controle de Plano de Testes",
+    "codigo": "CONTRO",
+    "descricao": "Aplicação web para as equipes de QA e desenvolvimento planejarem, executarem e documentarem casos de teste com evidências, e para clientes abrirem e acompanharem chamados de suporte.",
+    "tipo": "Aplicação web",
+    "situacao": "em produção",
+    "responsavel": "Brayan Rodrigues",
+    "equipe": ""
+  },
+  "versao": "0.1.0",
+  "atualizadoEm": "2026-09-27",
+  "compilacao": {
+    "numero": 1,
+    "data": "2026-09-27",
+    "artefato": ""
+  },
+  "historico": [
+    {
+      "versao": "0.1.0",
+      "data": "2026-09-27",
+      "branch": "main",
+      "tipo": "funcionalidade",
+      "resumo": "Ficha criada no Gito.",
+      "itens": [
+        "Primeiro registro de versão e ficha técnica da aplicação."
+      ],
+      "issues": []
+    }
+  ],
+  "ficha": {
+    "escopo": {
+      "objetivo": "Centralizar a gestão de planos de teste de software (casos, execuções, evidências e tickets de erro) e oferecer um portal de chamados para clientes, com dados compartilhados na nuvem entre a equipe.",
+      "inclui": [
+        "Cadastro, edição e exclusão de casos de teste, com resultado, tipo de teste, tipo de falha e tags",
+        "Reteste vinculado ao caso original, com numeração hierárquica (ex.: 3.1, 3.2) e histórico de execução por caso",
+        "Evidências anexadas ao caso: gravação de tela (MediaRecorder / getDisplayMedia), capturas de imagem, logs do console colados ou capturados e fluxogramas em Mermaid",
+        "Geração de tickets de erro a partir de um caso reprovado, com comentários técnicos do desenvolvedor e acompanhamento de status",
+        "Roadmap e quadro Kanban dos casos, com gráficos de resultado e de tipos de falha (Chart.js)",
+        "Retrospectiva animada da execução e dashboard analítico multi-escopo (run atual ou runs da nuvem, com filtros por tipo, tag e período; caso com ticket aberto conta como reprovado)",
+        "Login da equipe (Supabase Auth) e salvamento de runs na nuvem, organizadas em Projetos → Runs, com envio das mídias grandes para o Storage",
+        "Salvamento local de projetos no navegador (localStorage), exportação e importação do plano em JSON e relatório textual para e-mail",
+        "Portal de Chamados para clientes (estilo GLPI): abertura de chamado com evidências e gravação de tela, prioridades, status, categorias (módulos), SLA por projeto, comentários, anotações com tempo em vídeos, reabertura e notificação por e-mail",
+        "Área interna do portal: fila de chamados, administração de projetos, módulos e SLA, convite de clientes e gestão de papéis (interno / cliente) e acessos por projeto",
+        "Temas visuais (claro, escuro, sépia, terminal, oceano, roza)"
+      ],
+      "naoInclui": [
+        "Execução de testes automatizados (os testes são registrados manualmente)",
+        "Integração com o GLPI corporativo: o portal de chamados é próprio e guarda os dados no Supabase",
+        "Backend próprio: toda a lógica roda no navegador; o servidor é apenas o Supabase (banco, autenticação, arquivos e Edge Functions)",
+        "Sincronização automática dos projetos salvos em localStorage: eles ficam só no navegador de quem salvou, até serem enviados para a nuvem",
+        "Exportação de ticket para o Microsoft Teams: o botão existe, mas o módulo export-teams.js é apenas um stub neste repositório"
+      ]
+    },
+    "stack": [
+      "HTML5, CSS3 e JavaScript (ES6+) puro, sem framework e sem etapa de build",
+      "Chart.js (via CDN jsDelivr, sem versão fixada): gráficos do roadmap, dashboard e portal",
+      "@supabase/supabase-js v2 (via CDN jsDelivr): Auth, banco, Storage e chamada de Edge Functions",
+      "Mermaid 10 (via CDN jsDelivr): fluxogramas anexados aos casos e diagramas do roadmap",
+      "Mammoth 1.7.0 (via CDN cdnjs): carregada no index.html, usada apenas pelo código legado (importação de .docx)",
+      "Web APIs do navegador: MediaDevices.getDisplayMedia, MediaRecorder, Clipboard, FileReader e localStorage",
+      "Supabase: PostgreSQL com RLS, Supabase Auth (e-mail e senha), Supabase Storage e Edge Functions",
+      "GitHub Pages: hospedagem estática publicada a partir da branch main do repositório GitHub"
+    ],
+    "arquitetura": {
+      "resumo": "SPA estática hospedada no GitHub Pages (index.html + style.css) que carrega, em ordem, 13 módulos JavaScript da pasta js/ (01-core-state a 13-client-portal) compartilhando estado global no window; não há build nem servidor de aplicação. O estado da run (testCaseData, ticketData e contadores) fica em memória e é persistido de três formas: (1) localStorage do navegador, para projetos locais e preferências; (2) arquivo JSON exportado/importado pelo usuário; (3) Supabase, onde cada run é gravada na tabela public.cloud_runs com o estado completo em jsonb e o nome do projeto em project_name. Evidências em data-URI acima de 300 KB (vídeos e imagens grandes) vão para o bucket privado 'evidencias' do Supabase Storage, na pasta do próprio usuário (uid/...), e são lidas por URL assinada válida por 7 dias; imagens pequenas ficam em Base64 dentro do jsonb. O login usa Supabase Auth, e o RLS garante que a equipe logada lê todas as runs, mas só o dono cria, altera ou exclui as suas. O Portal de Chamados (js/13-client-portal.js) define o papel do usuário pela tabela profiles (interno ou cliente) e usa as tabelas support_projects, support_modules, sla_policies, client_project_access, support_tickets, support_ticket_comments e support_ticket_evidence_notes, as funções RPC reopen_ticket e seed_default_sla e as Edge Functions notify-ticket (e-mail de notificação) e portal-admin (convite e gestão de usuários). A URL do projeto Supabase e a chave publishable (pública por design) ficam fixas em js/11-supabase-sync.js; a service_role nunca vai para o front-end. Atenção: o script de schema do portal (sql/13-portal-cliente.sql) e o código das Edge Functions não estão versionados neste repositório; só sql/supabase-setup.sql e sql/supabase-update-v2.sql estão. Legado, fora do fluxo atual: script.js na raiz e a pasta BACKUP/ (versão monolítica antiga, não carregada pelo index.html) e a publicação de backups JSON via API do GitLab (js/10-export-backup-gitlab.js). A pasta backups/ do repositório continua sendo servida pelo GitHub Pages, e o modal de backups do repositório lê backups/index.json do próprio site.",
+      "diagramas": [
+        {
+          "titulo": "Visão geral da arquitetura",
+          "mermaid": "flowchart LR\n  U[Equipe QA / Dev] --> APP\n  C[Cliente] --> APP\n  subgraph Navegador\n    APP[SPA estática<br/>index.html + js/01..13]\n    LS[(localStorage<br/>projetos locais e preferências)]\n    APP <--> LS\n  end\n  CDN[CDNs jsDelivr / cdnjs<br/>Chart.js, supabase-js, Mermaid, Mammoth] --> APP\n  PAGES[GitHub Pages<br/>hospedagem estática] -. entrega os arquivos .-> APP\n  subgraph Supabase\n    AUTH[Auth<br/>e-mail e senha]\n    DB[(PostgreSQL + RLS<br/>cloud_runs, profiles, support_*)]\n    ST[(Storage<br/>bucket privado evidencias)]\n    EF[Edge Functions<br/>notify-ticket, portal-admin]\n  end\n  APP -->|login| AUTH\n  APP -->|runs e chamados| DB\n  APP -->|mídias acima de 300 KB<br/>URL assinada 7 dias| ST\n  APP -->|notificação e administração| EF\n  EF --> DB\n  EF -->|e-mail| MAIL[Destinatários do chamado]\n  APP -. legado .-> GL[API GitLab<br/>backups JSON]"
+        },
+        {
+          "titulo": "Salvamento de uma run na nuvem",
+          "mermaid": "sequenceDiagram\n  participant A as App (navegador)\n  participant S as Supabase Storage\n  participant D as Supabase DB (cloud_runs)\n  A->>A: Serializa casos, tickets, comentários, tags e histórico\n  loop Cada evidência acima de 300 KB\n    A->>S: Upload em evidencias/uid/pasta-da-run/\n  end\n  A->>D: Insert ou update (project_name, run_name, state jsonb)\n  Note over D: RLS permite gravar só as próprias runs\n  A->>D: Carregar run (qualquer usuário logado)\n  A->>S: Gera URLs assinadas (7 dias) para as mídias"
+        }
+      ]
+    },
+    "hospedagem": [
+      {
+        "ambiente": "Produção",
+        "onde": "GitHub Pages (site estático publicado a partir da branch main do repositório beyondBitsLtda/Controle-e-gest-o-de-testes)",
+        "url": "https://beyondbitsltda.github.io/Controle-e-gest-o-de-testes/",
+        "verificar": true
+      }
+    ],
+    "bancoDeDados": [
+      {
+        "nome": "Supabase: banco de dados",
+        "tipo": "PostgreSQL (Supabase)",
+        "servidor": "wilxxkkqgoigmrdgufej.supabase.co",
+        "porta": 443,
+        "base": "postgres (schema public)",
+        "acesso": "https://supabase.com/dashboard/project/wilxxkkqgoigmrdgufej",
+        "observacao": "A aplicação acessa pela API HTTPS do Supabase (porta 443), não por conexão direta ao Postgres. Tabelas: cloud_runs (runs de teste, estado em jsonb), profiles (papel interno/cliente), support_projects, support_modules, sla_policies, client_project_access, support_tickets, support_ticket_comments e support_ticket_evidence_notes. RLS ativo em todas. Scripts versionados: sql/supabase-setup.sql e sql/supabase-update-v2.sql; o schema do portal (sql/13-portal-cliente.sql) não está no repositório. Acesso ao painel: solicitar via chamado no GLPI."
+      },
+      {
+        "nome": "Supabase: armazenamento de evidências",
+        "tipo": "Object Storage (Supabase Storage)",
+        "servidor": "wilxxkkqgoigmrdgufej.supabase.co",
+        "porta": 443,
+        "base": "bucket evidencias (privado)",
+        "acesso": "https://supabase.com/dashboard/project/wilxxkkqgoigmrdgufej/storage/buckets",
+        "observacao": "Vídeos e imagens acima de 300 KB das runs e dos chamados. Cada usuário grava só na própria pasta (uid/...); leitura por usuários logados via URL assinada de 7 dias. No plano gratuito, o limite é 1 GB e 50 MB por arquivo."
+      }
+    ],
+    "integracoes": [
+      {
+        "nome": "Supabase Auth",
+        "descricao": "Login por e-mail e senha da equipe e dos clientes do portal; a sessão define o dono das runs e o papel no portal.",
+        "url": "https://wilxxkkqgoigmrdgufej.supabase.co"
+      },
+      {
+        "nome": "Supabase Edge Function notify-ticket",
+        "descricao": "Envia notificação por e-mail quando um chamado do portal é criado ou alterado.",
+        "url": "https://wilxxkkqgoigmrdgufej.supabase.co/functions/v1/notify-ticket"
+      },
+      {
+        "nome": "Supabase Edge Function portal-admin",
+        "descricao": "Operações administrativas do portal: convite de clientes, papéis, acessos por projeto e exclusão de usuários.",
+        "url": "https://wilxxkkqgoigmrdgufej.supabase.co/functions/v1/portal-admin"
+      },
+      {
+        "nome": "CDNs de bibliotecas (jsDelivr e cdnjs)",
+        "descricao": "Chart.js, supabase-js, Mermaid e Mammoth são carregadas em tempo de execução; sem internet a aplicação não funciona.",
+        "url": "https://cdn.jsdelivr.net"
+      },
+      {
+        "nome": "API do GitLab (legado)",
+        "descricao": "Publicação e listagem de backups JSON em backups/ de um repositório GitLab, configurada por usuário no navegador. Substituída pelo salvamento no Supabase.",
+        "url": "https://gitlab.com/api/v4"
+      },
+      {
+        "nome": "Microsoft Teams (incompleto)",
+        "descricao": "Botão 'Copiar para Teams' nos tickets depende do módulo export-teams.js, que neste repositório é apenas um stub.",
+        "url": ""
+      }
+    ],
+    "links": [
+      {
+        "titulo": "Repositório",
+        "url": "https://github.com/beyondBitsLtda/Controle-e-gest-o-de-testes"
+      },
+      {
+        "titulo": "Aplicação (GitHub Pages)",
+        "url": "https://beyondbitsltda.github.io/Controle-e-gest-o-de-testes/"
+      },
+      {
+        "titulo": "Guia de implantação (Supabase + GitHub + Vercel; a hospedagem atual é GitHub Pages)",
+        "url": "https://github.com/beyondBitsLtda/Controle-e-gest-o-de-testes/blob/main/GUIA-SUPABASE-GITHUB-VERCEL.md"
+      },
+      {
+        "titulo": "Roadmap",
+        "url": "https://github.com/beyondBitsLtda/Controle-e-gest-o-de-testes/blob/main/ROADMAP.md"
+      },
+      {
+        "titulo": "Painel do Supabase",
+        "url": "https://supabase.com/dashboard/project/wilxxkkqgoigmrdgufej"
+      }
+    ],
+    "contatos": [
+      {
+        "papel": "Responsável técnico",
+        "nome": "Brayan Rodrigues"
+      }
+    ]
+  }
+}
