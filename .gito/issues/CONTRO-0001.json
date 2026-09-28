@@ -10,7 +10,7 @@
   "versaoAlvo": "0.1.0",
   "criadaEm": "2026-09-27T05:28:22.801Z",
   "criadaPor": "Brayan Rodrigues <brayan.rodrigues@delp.com.br>",
-  "atualizadaEm": "2026-09-27T05:28:22.801Z",
+  "atualizadaEm": "2026-09-28T14:42:49.863Z",
   "comentarios": [],
   "evidencias": [],
   "historico": [
@@ -18,6 +18,16 @@
       "quando": "2026-09-27T05:28:22.801Z",
       "autor": "Brayan Rodrigues <brayan.rodrigues@delp.com.br>",
       "mudanca": "issue criada"
+    },
+    {
+      "quando": "2026-09-28T14:42:48.320Z",
+      "autor": "Brayan Rodrigues <brayan.rodrigues@delp.com.br>",
+      "mudanca": "situação: aberta → em-andamento"
+    },
+    {
+      "quando": "2026-09-28T14:42:49.863Z",
+      "autor": "Brayan Rodrigues <brayan.rodrigues@delp.com.br>",
+      "mudanca": "situação: em-andamento → aberta"
     }
   ]
 }
