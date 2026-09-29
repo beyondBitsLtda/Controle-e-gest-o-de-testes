@@ -215,7 +215,7 @@ function showKanbanCardDetailsModal(caseId) {
     modalBody.innerHTML = `
         <div class="details-modal-header">
             <input type="text" class="form-input details-modal-title" value="${caseData.itemTestado || ''}" onchange="updateTestCaseData('${caseId}', 'itemTestado', this.value)">
-            <p style="margin-left: 10px; color: var(--cor-texto-claro);">no quadro ${document.querySelector('.kanban-card[data-case-id=\''+caseId+'\']').closest('.kanban-column').querySelector('.kanban-column-header').textContent}</p>
+            <p style="margin-left: 10px; color: var(--cor-texto-claro);">no quadro ${PLANNING_COLUMNS[planningColumnOf(caseData)].title}</p>
         </div>
         
         <div class="details-modal-main-grid">

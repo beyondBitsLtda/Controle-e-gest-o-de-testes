@@ -48,75 +48,67 @@
         <nav class="testes-sidebar__nav" aria-label="Módulos do Control">
 
             <div class="testes-sidebar__grupo">Execução</div>
-            <a href="#" class="testes-sidebar__link testes-sidebar__link--ativo" data-app-tab="casos">
+            <a href="#" class="testes-sidebar__link testes-sidebar__link--ativo" data-app-tab="casos" data-app-perm="casos">
                 <span class="testes-sidebar__ic" aria-hidden="true">CT</span>
                 <span class="testes-sidebar__label">Casos de teste</span>
             </a>
-            <a href="#" class="testes-sidebar__link" data-app-tab="planejamento">
+            <a href="#" class="testes-sidebar__link" data-app-tab="planejamento" data-app-perm="planejamento">
                 <span class="testes-sidebar__ic" aria-hidden="true">PL</span>
                 <span class="testes-sidebar__label">Planejamento</span>
             </a>
-            <a href="#" class="testes-sidebar__link" data-app-tab="tickets">
+            <a href="#" class="testes-sidebar__link" data-app-tab="tickets" data-app-perm="tickets">
                 <span class="testes-sidebar__ic" aria-hidden="true">TK</span>
                 <span class="testes-sidebar__label">Tickets</span>
             </a>
 
             <div class="testes-sidebar__grupo">Visão</div>
-            <a href="#" class="testes-sidebar__link" data-app-tab="dashboard">
+            <a href="#" class="testes-sidebar__link" data-app-tab="dashboard" data-app-perm="dashboard">
                 <span class="testes-sidebar__ic" aria-hidden="true">DB</span>
                 <span class="testes-sidebar__label">Dashboard</span>
             </a>
-            <a href="#" class="testes-sidebar__link" data-app-acao="roadmap">
+            <a href="#" class="testes-sidebar__link" data-app-acao="roadmap" data-app-perm="roadmap">
                 <span class="testes-sidebar__ic" aria-hidden="true">RM</span>
                 <span class="testes-sidebar__label">Roadmap</span>
             </a>
-            <a href="#" class="testes-sidebar__link" data-app-acao="retrospectiva">
+            <a href="#" class="testes-sidebar__link" data-app-acao="retrospectiva" data-app-perm="analise">
                 <span class="testes-sidebar__ic" aria-hidden="true">RT</span>
                 <span class="testes-sidebar__label">Retrospectiva</span>
             </a>
-            <a href="#" class="testes-sidebar__link" data-app-acao="riscos">
+            <a href="#" class="testes-sidebar__link" data-app-acao="riscos" data-app-perm="analise">
                 <span class="testes-sidebar__ic" aria-hidden="true">AN</span>
                 <span class="testes-sidebar__label">Análise de riscos</span>
             </a>
 
-            <!-- Visível só para colaboradores (papel "interno"): o 13-client-portal.js
-                 remove a classe testes-oculto ao identificar o papel. -->
-            <div class="testes-oculto" id="portal-internal-btns">
-                <div class="testes-sidebar__grupo">Atendimento</div>
-                <a href="#" class="testes-sidebar__link" data-app-tab="chamados">
-                    <span class="testes-sidebar__ic" aria-hidden="true">CH</span>
-                    <span class="testes-sidebar__label">Chamados</span>
-                </a>
-                <a href="#" class="testes-sidebar__link" data-app-acao="admin-portal">
-                    <span class="testes-sidebar__ic" aria-hidden="true">GP</span>
-                    <span class="testes-sidebar__label">Gerenciar portal</span>
-                </a>
-                <a href="#" class="testes-sidebar__link" data-app-acao="acessos">
-                    <span class="testes-sidebar__ic" aria-hidden="true">AC</span>
-                    <span class="testes-sidebar__label">Gerenciar acessos</span>
-                </a>
-            </div>
+            <div class="testes-sidebar__grupo">Atendimento</div>
+            <a href="#" class="testes-sidebar__link" data-app-tab="chamados" data-app-perm="atendimento">
+                <span class="testes-sidebar__ic" aria-hidden="true">CH</span>
+                <span class="testes-sidebar__label">Chamados</span>
+            </a>
 
             <div class="testes-sidebar__grupo">Dados</div>
-            <a href="#" class="testes-sidebar__link" id="sb-open-btn" data-app-acao="nuvem">
+            <a href="#" class="testes-sidebar__link" id="sb-open-btn" data-app-acao="nuvem" data-app-perm="projetos">
                 <span class="testes-sidebar__ic" aria-hidden="true">PR</span>
                 <span class="testes-sidebar__label">Projetos e runs</span>
             </a>
-            <a href="#" class="testes-sidebar__link" data-app-acao="relatorio">
+            <a href="#" class="testes-sidebar__link" data-app-acao="relatorio" data-app-perm="casos">
                 <span class="testes-sidebar__ic" aria-hidden="true">RE</span>
                 <span class="testes-sidebar__label">Exportar relatório</span>
             </a>
-            <a href="#" class="testes-sidebar__link" data-app-acao="exportar-backup">
+            <a href="#" class="testes-sidebar__link" data-app-acao="exportar-backup" data-app-perm="casos">
                 <span class="testes-sidebar__ic" aria-hidden="true">EB</span>
                 <span class="testes-sidebar__label">Exportar backup</span>
             </a>
-            <a href="#" class="testes-sidebar__link" data-app-acao="importar-backup">
+            <a href="#" class="testes-sidebar__link" data-app-acao="importar-backup" data-app-perm-editar="casos">
                 <span class="testes-sidebar__ic" aria-hidden="true">IB</span>
                 <span class="testes-sidebar__label">Importar backup</span>
             </a>
             <input type="file" id="import-projects-file" accept=".json" class="testes-oculto" onchange="importAndDisplayProject(event)">
 
             <div class="testes-sidebar__grupo">Configurações</div>
+            <a href="#" class="testes-sidebar__link" data-app-tab="parametros" data-app-perm="parametros">
+                <span class="testes-sidebar__ic" aria-hidden="true">PA</span>
+                <span class="testes-sidebar__label">Parâmetros</span>
+            </a>
             <a href="#" class="testes-sidebar__link" data-app-acao="painel">
                 <span class="testes-sidebar__ic" aria-hidden="true">PC</span>
                 <span class="testes-sidebar__label">Painel de controle</span>
@@ -165,7 +157,7 @@
                 </select>
             </label>
 
-            <button type="button" class="testes-btn testes-btn--ghost testes-btn--mini" data-app-acao="nuvem"
+            <button type="button" class="testes-btn testes-btn--ghost testes-btn--mini" data-app-acao="nuvem" data-app-perm="projetos"
                     title="Salvar ou carregar runs na nuvem">
                 Nuvem
             </button>
@@ -195,7 +187,7 @@
                     </div>
                     <div class="testes-toolbar__right">
                         <input type="file" id="csv-upload" accept=".csv" class="testes-oculto" onchange="handleCSVUpload(event)">
-                        <button type="button" class="testes-btn testes-btn--ghost"
+                        <button type="button" class="testes-btn testes-btn--ghost" data-app-perm-editar="casos"
                                 onclick="document.getElementById('csv-upload').click()"
                                 title="Importar uma lista pronta de casos de teste em .csv">
                             Importar CSV
@@ -204,7 +196,7 @@
                                 title="Baixar a run atual em .json (casos, tickets, histórico e evidências)">
                             Exportar .json
                         </button>
-                        <button type="button" class="testes-btn testes-btn--primary" onclick="addNewTestCase()">
+                        <button type="button" class="testes-btn testes-btn--primary" data-app-perm-editar="casos" onclick="addNewTestCase()">
                             Novo caso de teste
                         </button>
                     </div>
@@ -276,7 +268,7 @@
                         </button>
                     </div>
                     <div class="testes-toolbar__right">
-                        <button type="button" class="testes-btn testes-btn--primary" onclick="addNewTestCase()">
+                        <button type="button" class="testes-btn testes-btn--primary" data-app-perm-editar="casos" onclick="addNewTestCase()">
                             Novo caso de teste
                         </button>
                     </div>
@@ -306,6 +298,14 @@
                 <div class="testes-toolbar" id="pq-filtros"></div>
                 <div class="testes-kpis" id="pq-kpis"></div>
                 <div id="pq-board" class="testes-kanban"></div>
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- ABA: PARÂMETROS E PERMISSÕES (js/16-parametros.js)           -->
+            <!-- ============================================================ -->
+            <section class="testes-tab" data-app-secao="parametros">
+                <div id="par-subabas"></div>
+                <div id="par-conteudo"></div>
             </section>
 
             <!-- ============================================================ -->
@@ -640,5 +640,7 @@
     <script src="js/12-dashboard.js"></script>
     <script src="js/13-client-portal.js"></script>
     <script src="js/14-app-shell.js"></script>
+    <script src="js/15-permissoes.js"></script>
+    <script src="js/16-parametros.js"></script>
 </body>
 </html>
