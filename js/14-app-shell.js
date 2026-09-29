@@ -69,7 +69,9 @@ function appUpdateTopbar() {
     const nome = document.getElementById('app-topbar-run-nome');
     const contagem = document.getElementById('app-topbar-contagem');
     if (!pill || !nome || !contagem) return;
-    const run = currentLoadedProjectName;
+    // Run da nuvem: "Projeto / Run", como no portal Fluig.
+    const run = (typeof sbRunAtual !== 'undefined' && sbRunAtual && sbRunAtual.run_name === currentLoadedProjectName)
+        ? `${sbRunAtual.project_name} / ${sbRunAtual.run_name}` : currentLoadedProjectName;
     pill.classList.toggle('testes-topbar__pill--vazio', !run);
     nome.textContent = run || 'Nenhuma run aberta';
     const casos = Object.keys(testCaseData || {}).length;

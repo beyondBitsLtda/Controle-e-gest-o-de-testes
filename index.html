@@ -86,7 +86,7 @@
             </a>
 
             <div class="testes-sidebar__grupo">Dados</div>
-            <a href="#" class="testes-sidebar__link" id="sb-open-btn" data-app-acao="nuvem" data-app-perm="projetos">
+            <a href="#" class="testes-sidebar__link" id="sb-open-btn" data-app-acao="nuvem" data-app-perm="casos">
                 <span class="testes-sidebar__ic" aria-hidden="true">PR</span>
                 <span class="testes-sidebar__label">Projetos e runs</span>
             </a>
@@ -157,7 +157,7 @@
                 </select>
             </label>
 
-            <button type="button" class="testes-btn testes-btn--ghost testes-btn--mini" data-app-acao="nuvem" data-app-perm="projetos"
+            <button type="button" class="testes-btn testes-btn--ghost testes-btn--mini" data-app-acao="nuvem" data-app-perm="casos"
                     title="Salvar ou carregar runs na nuvem">
                 Nuvem
             </button>
@@ -169,6 +169,22 @@
             <!-- ABA: CASOS DE TESTE                                          -->
             <!-- ============================================================ -->
             <section class="testes-tab testes-tab--ativa" data-app-secao="casos">
+
+                <!-- Contexto de trabalho (Projeto -> Run), como no portal Fluig.
+                     Preenchido por sbCtxCarregar (js/11) quando há login. -->
+                <div class="testes-toolbar testes-toolbar--contexto testes-oculto" id="casos-contexto">
+                    <div class="testes-toolbar__left">
+                        <span class="testes-toolbar__rotulo">Projeto</span>
+                        <select id="ctx-projeto" class="testes-select" onchange="sbCtxTrocarProjeto()"></select>
+                        <span class="testes-toolbar__rotulo">Run</span>
+                        <select id="ctx-run" class="testes-select"></select>
+                        <button type="button" id="ctx-abrir" class="testes-btn testes-btn--primary testes-btn--mini" onclick="sbCtxAbrirRun()">Abrir run</button>
+                    </div>
+                    <div class="testes-toolbar__right">
+                        <button type="button" class="testes-btn testes-btn--ghost testes-btn--mini" onclick="sbCtxCarregar()" title="Buscar as runs de novo">Atualizar lista</button>
+                        <button type="button" class="testes-btn testes-btn--ghost testes-btn--mini" onclick="sbOpenModal()">Salvar / gerenciar runs</button>
+                    </div>
+                </div>
 
                 <div class="testes-toolbar">
                     <div class="testes-toolbar__left">
@@ -232,7 +248,7 @@
                 </div>
 
                 <div id="initial-view-container" class="testes-card testes-oculto">
-                    <div class="testes-card__titulo">Projetos salvos neste navegador</div>
+                    <div class="testes-card__titulo" id="initial-view-titulo">Projetos salvos neste navegador</div>
                     <div class="testes-card__corpo">
                         <p class="testes-texto-apoio">Selecione um projeto para carregar, abra uma run da nuvem em
                             <strong>Projetos e runs</strong> ou comece um novo com <strong>Novo caso de teste</strong>.</p>

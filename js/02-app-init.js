@@ -97,8 +97,12 @@ function showInitialView() {
     document.getElementById('initial-view-container').classList.remove('testes-oculto');
     document.getElementById('test-case-container').style.display = 'none';
 
-    // Agora renderiza a lista de Macro-Projetos na view inicial
-    renderMacroProjectsList('initial-project-list', 'load');
+    // Com login: projetos de teste liberados na nuvem. Offline: projetos locais.
+    if (typeof sbSession !== 'undefined' && sbSession && typeof sbRenderProjetosLiberados === 'function') {
+        sbRenderProjetosLiberados('initial-project-list');
+    } else {
+        renderMacroProjectsList('initial-project-list', 'load');
+    }
 }
 
 function showTestCaseView() {

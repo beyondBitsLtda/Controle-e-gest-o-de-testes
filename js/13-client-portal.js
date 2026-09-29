@@ -98,6 +98,7 @@ async function portalOnAuth() {
         }
         appSetPapel(papel);
         if (papel === 'CLIENTE') await portalEnterClientMode();
+        else if (typeof sbCtxCarregar === 'function') sbCtxCarregar();
         if (typeof sbUpdateUserChip === 'function') sbUpdateUserChip();
         portalVigiarSituacao();
     } catch (e) { console.error('[portal] erro em portalOnAuth:', e); }
