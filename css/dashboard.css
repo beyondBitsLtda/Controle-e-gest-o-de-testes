@@ -1,0 +1,22 @@
+/* ============================================================================
+ * dashboard.css - complementos do Dashboard de qualidade (js/12-dashboard.js)
+ * ============================================================================
+ * A base (cards, KPIs, graficos) vem do control.css. Aqui so o que faltar.
+ * ============================================================================ */
+
+/* caso destacado ao vir do drill-down ("Ver o caso") */
+.db-caso-destaque {
+    outline: 3px solid var(--td-accent);
+    outline-offset: 3px;
+    transition: outline-color .3s;
+}
+
+/* iframe oculto usado só para imprimir o relatório (tema claro) */
+.db-quadro-impressao {
+    position: fixed;
+    left: -10000px;
+    top: 0;
+    width: 1100px;
+    height: 800px;
+    border: 0;
+}

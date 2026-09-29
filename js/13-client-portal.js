@@ -54,6 +54,8 @@ function portalApplyTheme(name) {
     const chk = document.getElementById('toggle-dark-mode'); if (chk) chk.checked = isDark;
     const sel = document.getElementById('theme-select'); if (sel) sel.value = name;
     try { localStorage.setItem('portalTheme', name); } catch (e) {}
+    // Classe de tema do design system (js/14-app-shell.js), quando já carregado.
+    if (typeof appApplyRootTheme === 'function') appApplyRootTheme(name);
 }
 function portalThemePicker() {
     const cur = portalCurrentTheme();
@@ -95,39 +97,23 @@ async function portalOnAuth() {
         } else {
             portalInjectInternalButtons();
         }
+        if (typeof sbUpdateUserChip === 'function') sbUpdateUserChip();
     } catch (e) { console.error('[portal] erro em portalOnAuth:', e); }
     finally { portalRemoveBoot(); }
 }
 
-// Splash imediato: evita o "flash" da tela de testes antes de decidir a rota.
+// Splash: reaproveita a tela de carregamento do shell (#app-splash, que já
+// nasce no index.html) para cobrir o app até decidir a rota (cliente/interno).
 function portalBootSplash() {
-    if (document.getElementById('portal-boot')) return;
-    if (!document.getElementById('portal-boot-style')) {
-        const st = document.createElement('style');
-        st.id = 'portal-boot-style';
-        st.textContent = '@keyframes portalSpin{to{transform:rotate(360deg)}}';
-        document.head.appendChild(st);
-    }
-    const s = document.createElement('div');
-    s.id = 'portal-boot';
-    s.style.cssText = 'position:fixed; inset:0; z-index:19000; background:linear-gradient(135deg,#1c2e4a,#3b6ff0); display:flex; align-items:center; justify-content:center;';
-    s.innerHTML = '<div style="width:46px; height:46px; border:4px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:portalSpin 0.8s linear infinite;"></div>';
-    document.body.appendChild(s);
+    if (typeof appSplashShow === 'function') appSplashShow('Carregando seu perfil...');
 }
-function portalRemoveBoot() { document.getElementById('portal-boot')?.remove(); }
-
-// Mostra o splash IMEDIATAMENTE ao carregar (cobre o app de testes até
-// decidirmos a rota). Trava de segurança remove após alguns segundos.
-(function portalMaybeBoot() {
-    try {
-        const show = () => { portalBootSplash(); setTimeout(portalRemoveBoot, 6000); };
-        if (document.body) show();
-        else document.addEventListener('DOMContentLoaded', show);
-    } catch (e) { /* ignore */ }
-})();
+function portalRemoveBoot() {
+    if (typeof appSplashHide === 'function') appSplashHide();
+}
 
 function portalExit() {
     portalRole = null;
+    document.getElementById('portal-internal-btns')?.classList.add('testes-oculto');
     document.getElementById('client-portal')?.remove();
     document.body.style.overflow = '';
 }
@@ -437,7 +423,7 @@ async function portalLoadVideoNotes(ticketId, evidenceKey) {
         <div style="border-bottom:1px solid #f0f0f0; padding:8px 0;">
           <a href="#" onclick="var v=document.getElementById('pvc-player'); if(v){v.currentTime=${n.time_seconds}; v.play();} return false;"
              style="color:#3b6ff0; font-weight:700; text-decoration:none;">▶ ${portalFmtTime(n.time_seconds)}</a>
-          <span style="font-size:0.76em; color:#999; margin-left:6px;">${n.author_name || ''}</span>
+          <span style="font-size:0.76em; color:#999; margin-left:6px;">${portalEscapeHtml(n.author_name || '')}</span>
           <div style="white-space:pre-wrap; margin-top:2px;">${(n.body || '').replace(/</g, '&lt;')}</div>
         </div>`).join('');
 }
@@ -478,7 +464,7 @@ async function portalEnterClientMode() {
     overlay.innerHTML = `
       <header style="background:linear-gradient(135deg,var(--bb-copper-d,#2a55c4),var(--bb-copper,#3b6ff0)); color:#fff; padding:14px 22px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 10px rgba(0,0,0,0.18);">
         <div style="display:flex; align-items:center; gap:12px;">
-          <div style="background:#000; border-radius:10px; padding:6px 12px;"><img src="logologin.png" style="max-height:46px; display:block;" onerror="if(this.dataset.f!=='1'){this.dataset.f='1';this.src='logo-login.png';}else if(this.dataset.f!=='2'){this.dataset.f='2';this.src='logo.png';}else{this.parentElement.style.display='none';}"></div>
+          <img src="img/logo-control-contorno-sm.png" alt="Control" style="max-height:46px; display:block;">
           <strong style="font-size:1.15em;">Portal de Chamados</strong>
         </div>
         <div style="display:flex; align-items:center; gap:12px; font-size:0.9em;">
@@ -659,7 +645,7 @@ function portalTicketRow(t, showRequester) {
       <div onclick="portalOpenTicketDetail('${t.id}')" style="background:var(--bb-surface,#fff); border:1px solid var(--bb-border,#e5e8ef); border-radius:10px; padding:14px 16px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.05); cursor:pointer; display:flex; align-items:center; gap:14px; border-left:5px solid ${STATUS_COLORS[t.status]||'#888'};">
         <div style="font-weight:700; color:var(--bb-copper,#1c2e4a); min-width:56px;">#${t.display_id}</div>
         <div style="flex:1; min-width:0;">
-          <div style="font-weight:600; color:var(--bb-txt1,#1a1d26); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.title}</div>
+          <div style="font-weight:600; color:var(--bb-txt1,#1a1d26); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${portalEscapeHtml(t.title)}</div>
           <div style="font-size:0.8em; color:var(--bb-txt2,#888);">Módulo: ${mod} · ${new Date(t.created_at).toLocaleString('pt-BR')}${who}</div>
           ${portalSlaBar(t)}
         </div>
@@ -892,7 +878,7 @@ async function portalOpenTicketDetail(ticketId, internalView = false) {
         </div>`;
 
     const detailModal = portalModalShell('ticket-detail-modal', `Chamado #${t.display_id}`, `
-        <h3 style="margin:0 0 4px;">${t.title}</h3>
+        <h3 style="margin:0 0 4px;">${portalEscapeHtml(t.title)}</h3>
         <div style="font-size:0.82em; color:#888; margin-bottom:6px;">Módulo: ${mod} · Aberto em ${new Date(t.created_at).toLocaleString('pt-BR')}${internalView ? ` · Projeto: ${t.support_projects?.name||''}`:''}</div>
         ${controls}
         <div style="background:#f7f9fc; border-radius:8px; padding:12px; margin-bottom:12px; white-space:pre-wrap;">${t.description.replace(/</g,'&lt;')}</div>
@@ -950,7 +936,7 @@ async function portalLoadComments(ticketId, internalView) {
         const evGridId = `cmt-ev-${idx}`;
         const hasEv = Array.isArray(c.evidences) && c.evidences.length;
         return `<div style="max-width:82%; ${align} background:${bg}; ${border} border-radius:10px; padding:9px 12px; margin-bottom:8px;">
-            <div style="font-size:0.75em; color:${c.is_resolution ? '#1e8e3e' : '#888'}; margin-bottom:2px; font-weight:${c.is_resolution ? '700' : '400'};">${c.author_name||c.author_role}${tag} · ${new Date(c.created_at).toLocaleString('pt-BR')}</div>
+            <div style="font-size:0.75em; color:${c.is_resolution ? '#1e8e3e' : '#888'}; margin-bottom:2px; font-weight:${c.is_resolution ? '700' : '400'};">${portalEscapeHtml(c.author_name||c.author_role)}${tag} · ${new Date(c.created_at).toLocaleString('pt-BR')}</div>
             <div style="white-space:pre-wrap;">${c.body.replace(/</g,'&lt;')}</div>
             ${hasEv ? `<div id="${evGridId}" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;"></div>` : ''}
           </div>`;
@@ -1133,12 +1119,55 @@ let portalUsersData = [];
 let portalAllProjects = [];
 let portalAccessExpanded = null;
 
+// Chama a Edge Function portal-admin com prazo e erro legível (CONTRO-0001).
+// Sem prazo, uma chamada que nunca volta deixava o modal em "Carregando
+// usuários..." para sempre; e o erro genérico do supabase-js ("non-2xx")
+// escondia o motivo real, que vem no corpo da resposta.
+const PORTAL_ADMIN_TIMEOUT_MS = 20000;
+
 async function portalAdminInvoke(body) {
     const client = sbGetClient();
-    const { data, error } = await client.functions.invoke('portal-admin', { body });
-    if (error) throw new Error(error.message || 'Falha na função');
+    if (!client) throw new Error('Cliente do Supabase indisponível. Recarregue a página.');
+    const session = await sbGetSession();
+    if (!session) throw new Error('Sua sessão expirou. Saia e entre novamente.');
+
+    let timer;
+    const timeout = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(
+            `A função portal-admin não respondeu em ${PORTAL_ADMIN_TIMEOUT_MS / 1000}s.`)), PORTAL_ADMIN_TIMEOUT_MS);
+    });
+    let result;
+    try {
+        result = await Promise.race([client.functions.invoke('portal-admin', { body }), timeout]);
+    } finally {
+        clearTimeout(timer);
+    }
+    const { data, error } = result;
+    if (error) throw new Error(await portalDescribeFunctionError(error));
     if (data && data.error) throw new Error(data.error);
     return data;
+}
+
+// Traduz o erro do functions.invoke numa frase útil para o suporte.
+async function portalDescribeFunctionError(error) {
+    const resp = error && error.context;   // FunctionsHttpError: Response original
+    if (resp && typeof resp.status === 'number') {
+        let detalhe = '';
+        try {
+            const txt = await resp.clone().text();
+            try { const j = JSON.parse(txt); detalhe = j.error || j.message || j.msg || txt; }
+            catch (e) { detalhe = txt; }
+        } catch (e) { /* corpo já lido ou indisponível */ }
+        return `HTTP ${resp.status}${detalhe ? ' - ' + String(detalhe).slice(0, 300) : ''}`;
+    }
+    if (error && error.name === 'FunctionsFetchError') {
+        return 'Não foi possível contatar a função portal-admin (rede ou bloqueio do navegador).';
+    }
+    return (error && error.message) || 'Falha na função';
+}
+
+function portalEscapeHtml(v) {
+    return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 async function portalOpenAccessMgmt() {
@@ -1148,14 +1177,23 @@ async function portalOpenAccessMgmt() {
         <div id="pac-status" style="font-size:0.85em; color:var(--bb-txt2,#888); margin-bottom:8px;">Carregando usuários...</div>
         <div id="pac-list"></div>
     `, 940);
+    const status = document.getElementById('pac-status');
     try {
         const data = await portalAdminInvoke({ action: 'list_users' });
-        portalUsersData = data.users || [];
-        portalAllProjects = data.all_projects || [];
-        document.getElementById('pac-status').textContent = `${portalUsersData.length} usuário(s).`;
+        if (!data || !Array.isArray(data.users)) {
+            throw new Error('Resposta inesperada da função portal-admin (sem a lista de usuários).');
+        }
+        // Clientes sem projeto podem vir sem "projects": normaliza para lista.
+        portalUsersData = data.users.map(u => ({ ...u, projects: Array.isArray(u.projects) ? u.projects : [] }));
+        portalAllProjects = Array.isArray(data.all_projects) ? data.all_projects : [];
+        if (status) status.textContent = `${portalUsersData.length} usuário(s).`;
         portalRenderUserList();
     } catch (e) {
-        document.getElementById('pac-status').innerHTML = '<span style="color:#c0392b;">Erro: ' + e.message + '</span>';
+        console.error('[portal] Gerenciar acessos:', e);
+        if (!status) return;
+        status.innerHTML = `<span style="color:#c0392b;">Não foi possível carregar os usuários: ${portalEscapeHtml(e.message)}</span>
+            <button type="button" onclick="portalOpenAccessMgmt()" style="margin-left:8px; border:1px solid var(--bb-border,#ccc); background:var(--bb-surface,#fff); color:var(--bb-txt1,#222); border-radius:6px; padding:4px 10px; cursor:pointer; font-size:0.9em;">Tentar de novo</button>
+            <div style="margin-top:6px; font-size:0.9em;">Se persistir, confira os logs da função <strong>portal-admin</strong> no painel do Supabase (Edge Functions &rarr; Logs).</div>`;
     }
 }
 
@@ -1195,8 +1233,8 @@ function portalUserCard(u) {
       <div style="border:1px solid var(--bb-border,#e5e8ef); border-radius:10px; padding:12px 14px; margin-bottom:8px; background:var(--bb-surface,#fff);">
         <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
           <div style="flex:1; min-width:160px;">
-            <div style="font-weight:600; color:var(--bb-txt1,#222);">${u.full_name || '(sem nome)'}</div>
-            <div style="font-size:0.8em; color:var(--bb-txt2,#888);">${u.email}</div>
+            <div style="font-weight:600; color:var(--bb-txt1,#222);">${portalEscapeHtml(u.full_name || '(sem nome)')}</div>
+            <div style="font-size:0.8em; color:var(--bb-txt2,#888);">${portalEscapeHtml(u.email)}</div>
           </div>
           <select onchange="portalSetUserRole('${u.id}', this.value)" style="padding:7px; border-radius:6px; border:1px solid ${roleColor}; color:${roleColor}; font-weight:600; font-size:0.85em; background:var(--bb-surface,#fff);">
             <option value="cliente" ${!isInterno?'selected':''}>Cliente (portal)</option>
@@ -1292,176 +1330,232 @@ function portalCloseModal(id) { document.getElementById(id)?.remove(); }
 // =====================================================================
 //  MODO INTERNO — FILA DE CHAMADOS + ADMIN DO PORTAL
 // =====================================================================
+// O grupo "Atendimento" já nasce oculto na sidebar (index.html); aqui só
+// o liberamos para quem tem papel interno.
 function portalInjectInternalButtons() {
-    const sidebar = document.querySelector('.sidebar');
-    if (!sidebar || document.getElementById('portal-internal-btns')) return;
-    const box = document.createElement('div');
-    box.id = 'portal-internal-btns';
-    const hr = document.createElement('hr'); hr.className = 'sidebar-divider';
-    box.appendChild(hr);
-    const h3 = document.createElement('h3'); h3.textContent = 'Portal de Chamados';
-    box.appendChild(h3);
-
-    const queueBtn = document.createElement('button');
-    queueBtn.className = 'btn'; queueBtn.style.backgroundColor = '#3b6ff0';
-    queueBtn.textContent = 'Fila de Chamados';
-    queueBtn.onclick = portalOpenInternalQueue;
-    box.appendChild(queueBtn);
-
-    const adminBtn = document.createElement('button');
-    adminBtn.className = 'btn'; adminBtn.style.backgroundColor = '#8e44ad'; adminBtn.style.marginTop = '6px';
-    adminBtn.textContent = 'Gerenciar Portal';
-    adminBtn.onclick = portalOpenAdmin;
-    box.appendChild(adminBtn);
-
-    const accessBtn = document.createElement('button');
-    accessBtn.className = 'btn'; accessBtn.style.backgroundColor = '#16a085'; accessBtn.style.marginTop = '6px';
-    accessBtn.textContent = 'Gerenciar Acessos';
-    accessBtn.onclick = portalOpenAccessMgmt;
-    box.appendChild(accessBtn);
-
-    sidebar.appendChild(box);
+    document.getElementById('portal-internal-btns')?.classList.remove('testes-oculto');
 }
 
-// Injeta CSS complementar (status/prioridade que não existem no style.css)
-function portalEnsureQueueStyle() {
-    if (document.getElementById('portal-queue-style')) return;
-    const st = document.createElement('style');
-    st.id = 'portal-queue-style';
-    st.textContent = `
-      #portal-queue-view { position:fixed; inset:0; z-index:14000; background:var(--bb-bg,#f4f6fb); overflow-y:auto; padding:24px; box-sizing:border-box; }
-      #portal-queue-view .ticket-card { background:var(--bb-surface,#fff) !important; color:var(--bb-txt1,#1a1d26) !important; border:1px solid var(--bb-border,#e5e8ef) !important; box-shadow:0 1px 4px rgba(0,0,0,0.06) !important; }
-      #portal-queue-view .ticket-card .ticket-card-title { color:var(--bb-txt1,#1a1d26) !important; }
-      #portal-queue-view .ticket-card p { color:var(--bb-txt2,#6b7280) !important; }
-      #portal-queue-view .ticket-card .ticket-card-footer { color:var(--bb-txt2,#6b7280) !important; }
-      .ticket-card.status-aberto { border-left:5px solid ${STATUS_COLORS['Aberto']} !important; }
-      .ticket-card.status-em-análise { border-left:5px solid ${STATUS_COLORS['Em Análise']} !important; }
-      .ticket-card.status-em-desenvolvimento { border-left:5px solid ${STATUS_COLORS['Em Desenvolvimento']} !important; }
-      .ticket-card.status-aguardando-cliente { border-left:5px solid ${STATUS_COLORS['Aguardando Cliente']} !important; }
-      .ticket-card.status-resolvido { border-left:5px solid ${STATUS_COLORS['Resolvido']} !important; }
-      .ticket-card.status-fechado { border-left:5px solid ${STATUS_COLORS['Fechado']} !important; }
-      .ticket-kanban-header.status-aguardando-cliente { border-color:${STATUS_COLORS['Aguardando Cliente']}; }
-      .ticket-kanban-header.status-resolvido { border-color:${STATUS_COLORS['Resolvido']}; }
-      .ticket-priority-badge.priority-crítica { background-color:var(--priority-critical,#c0392b); }
-    `;
-    document.head.appendChild(st);
+// Aba "Chamados" (js/14-app-shell.js): mesma barra de filtros, faixa de KPIs
+// e kanban do quadro de tickets, no padrão do Portal de Testes do Fluig.
+const PORTAL_QUEUE_COLUMN_TYPES = {
+    'Aberto': 'erro', 'Em Análise': 'aviso', 'Em Desenvolvimento': 'info',
+    'Aguardando Cliente': 'roxo', 'Resolvido': 'sucesso', 'Fechado': 'cinza'
+};
+const PORTAL_QUEUE_PRIORITY_TYPES = { 'Crítica': 'critico', 'Alta': 'erro', 'Média': 'aviso', 'Baixa': 'info' };
+let portalQueueTickets = [];
+
+function portalSlug(v) {
+    return String(v || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-');
+}
+
+function portalInitials(nome) {
+    const partes = String(nome || '').trim().split(/\s+/).filter(Boolean);
+    if (!partes.length) return '?';
+    return ((partes[0][0] || '') + (partes.length > 1 ? partes[partes.length - 1][0] : '')).toUpperCase();
+}
+
+// SLA no visual do design system (badge + barra), a partir do portalSlaState/portalSlaBar
+function portalSlaBadgeDs(t) {
+    if (['Resolvido', 'Fechado'].includes(t.status)) return '<span class="testes-badge testes-badge--sucesso">no prazo</span>';
+    if (!t.sla_resolution_due) return '';
+    const diffH = (new Date(t.sla_resolution_due).getTime() - Date.now()) / 36e5;
+    if (diffH < 0) return '<span class="testes-badge testes-badge--erro">SLA estourado</span>';
+    const label = diffH >= 24 ? `${Math.floor(diffH / 24)}d restantes` : `${Math.ceil(diffH)}h restantes`;
+    return `<span class="testes-badge testes-badge--${diffH < 4 ? 'aviso' : 'sucesso'}">SLA: ${label}</span>`;
+}
+
+function portalSlaBarDs(t) {
+    if (!t.sla_resolution_due) return '';
+    const created = new Date(t.created_at).getTime();
+    const due = new Date(t.sla_resolution_due).getTime();
+    const done = ['Resolvido', 'Fechado'].includes(t.status);
+    const end = (done && t.resolved_at) ? new Date(t.resolved_at).getTime() : Date.now();
+    const total = due - created;
+    let pct = total > 0 ? ((end - created) / total) * 100 : 0;
+    const breached = pct > 100;
+    pct = Math.max(0, Math.min(100, pct));
+    let tipo, label;
+    if (done) {
+        tipo = breached ? 'aviso' : 'sucesso';
+        label = breached ? 'Concluído fora do prazo' : 'Concluído dentro do SLA';
+    } else {
+        tipo = breached ? 'erro' : (pct >= 70 ? 'aviso' : 'sucesso');
+        label = breached ? 'SLA estourado (100%+)' : `${Math.round(pct)}% do SLA consumido`;
+    }
+    return `<div class="testes-barra testes-barra--${tipo} portal-fila__sla">
+        <div class="testes-barra__trilha"><div class="testes-barra__preenchimento testes-barra__preenchimento--p${Math.round(pct / 5) * 5}"></div></div>
+        <div class="testes-barra__rotulo">${label}</div>
+      </div>`;
 }
 
 async function portalOpenInternalQueue() {
-    portalEnsureQueueStyle();
-    document.getElementById('portal-queue-view')?.remove();
+    const filtros = document.getElementById('pq-filtros');
+    const board = document.getElementById('pq-board');
+    if (!filtros || !board) return;
     const client = sbGetClient();
+    const session = client ? await sbGetSession() : null;
+    if (!session) {
+        filtros.innerHTML = '';
+        document.getElementById('pq-kpis').innerHTML = '';
+        board.innerHTML = '<div class="testes-placeholder"><span class="testes-placeholder__txt">Entre com sua conta para ver os chamados dos clientes.</span></div>';
+        return;
+    }
     const { data: projects } = await client.from('support_projects').select('id,name').order('name');
 
-    const view = document.createElement('div');
-    view.id = 'portal-queue-view';
-    view.innerHTML = `
-      <div class="ticket-management-header">
-        <h2>Fila de Chamados de Clientes</h2>
-        <p>Acompanhe, priorize e resolva os chamados abertos pelos clientes no portal.</p>
-        <button class="btn" style="background-color:#6c757d; margin-top:10px;" onclick="document.getElementById('portal-queue-view').remove()">Voltar</button>
-      </div>
-      <div class="ticket-filters">
-        <select id="pq-project" class="form-select" onchange="portalRefreshInternalQueue()">
+    filtros.innerHTML = `
+      <div class="testes-toolbar__left">
+        <input id="pq-search" class="testes-input testes-input--busca" oninput="portalRefreshInternalQueue(false)" placeholder="Buscar por título, descrição ou requerente...">
+        <select id="pq-project" class="testes-select testes-select--filtro" onchange="portalRefreshInternalQueue(false)">
           <option value="">Todos os projetos</option>
-          ${(projects||[]).map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+          ${(projects || []).map(p => `<option value="${p.id}">${portalEscapeHtml(p.name)}</option>`).join('')}
         </select>
-        <select id="pq-priority" class="form-select" onchange="portalRefreshInternalQueue()">
-          <option value="">Todas as prioridades</option>
-          ${PORTAL_PRIORITIES.map(p => `<option>${p}</option>`).join('')}
-        </select>
-        <select id="pq-requester" class="form-select" onchange="portalRefreshInternalQueue()">
-          <option value="">Todos os requerentes</option>
-        </select>
-        <select id="pq-status" class="form-select" onchange="portalRefreshInternalQueue()">
+        <select id="pq-status" class="testes-select testes-select--filtro" onchange="portalRefreshInternalQueue(false)">
           <option value="">Todos os status</option>
           ${PORTAL_STATUSES.map(s => `<option>${s}</option>`).join('')}
         </select>
-        <input id="pq-search" class="form-input" oninput="portalRefreshInternalQueue()" placeholder="Buscar título...">
+        <select id="pq-priority" class="testes-select testes-select--filtro" onchange="portalRefreshInternalQueue(false)">
+          <option value="">Todas as prioridades</option>
+          ${PORTAL_PRIORITIES.map(p => `<option>${p}</option>`).join('')}
+        </select>
+        <select id="pq-requester" class="testes-select testes-select--filtro" onchange="portalRefreshInternalQueue(false)">
+          <option value="">Todos os requerentes</option>
+        </select>
+        <button type="button" class="testes-btn testes-btn--ghost testes-btn--mini" onclick="portalClearQueueFilters()">Limpar filtros</button>
       </div>
-      <div id="pq-board" class="ticket-kanban-board"><em style="padding:20px;">Carregando...</em></div>`;
-    document.body.appendChild(view);
+      <div class="testes-toolbar__right">
+        <button type="button" class="testes-btn testes-btn--ghost" onclick="portalOpenInternalQueue()" title="Buscar os chamados novamente">Recarregar</button>
+      </div>`;
+    board.innerHTML = '<div class="testes-placeholder"><span class="testes-placeholder__txt">Carregando a fila de chamados...</span></div>';
     portalRefreshInternalQueue(true);
 }
 
-async function portalRefreshInternalQueue(populateRequesters = false) {
+function portalClearQueueFilters() {
+    ['pq-search', 'pq-project', 'pq-status', 'pq-priority', 'pq-requester'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+    });
+    portalRefreshInternalQueue(false);
+}
+
+// reload=false só reaplica os filtros sobre a lista já carregada.
+async function portalRefreshInternalQueue(reload = true) {
     const client = sbGetClient();
     const board = document.getElementById('pq-board');
-    if (!board) return;
+    if (!board || !client) return;
+
+    if (reload) {
+        const { data: tickets, error } = await client.from('support_tickets')
+            .select('*, support_modules(name), support_projects(name), profiles(full_name)')
+            .order('created_at', { ascending: false });
+        if (error) {
+            board.innerHTML = `<div class="testes-placeholder"><span class="testes-placeholder__txt">Erro ao carregar os chamados: ${portalEscapeHtml(error.message)}</span></div>`;
+            return;
+        }
+        portalQueueTickets = tickets || [];
+        const sel = document.getElementById('pq-requester');
+        if (sel) {
+            const names = [...new Set(portalQueueTickets.map(t => t.profiles?.full_name).filter(Boolean))].sort();
+            sel.innerHTML = '<option value="">Todos os requerentes</option>' + names.map(n => `<option>${portalEscapeHtml(n)}</option>`).join('');
+        }
+    }
 
     const projectF = document.getElementById('pq-project')?.value || '';
     const priorityF = document.getElementById('pq-priority')?.value || '';
     const requesterF = document.getElementById('pq-requester')?.value || '';
     const statusF = document.getElementById('pq-status')?.value || '';
-    const searchF = (document.getElementById('pq-search')?.value || '').toLowerCase();
+    const searchF = (document.getElementById('pq-search')?.value || '').trim().toLowerCase();
 
-    const { data: tickets, error } = await client.from('support_tickets')
-        .select('*, support_modules(name), support_projects(name), profiles(full_name)')
-        .order('created_at', { ascending: false });
-    if (error) { board.innerHTML = '<span style="color:#c0392b; padding:20px;">Erro: '+error.message+'</span>'; return; }
-
-    // Popular o filtro de requerentes uma vez
-    if (populateRequesters) {
-        const sel = document.getElementById('pq-requester');
-        const names = [...new Set((tickets||[]).map(t => t.profiles?.full_name).filter(Boolean))].sort();
-        sel.innerHTML = '<option value="">Todos os requerentes</option>' + names.map(n => `<option>${n}</option>`).join('');
-    }
-
-    const filtered = (tickets||[]).filter(t =>
+    const filtered = portalQueueTickets.filter(t =>
         (!projectF || t.project_id === projectF) &&
         (!priorityF || t.priority === priorityF) &&
         (!requesterF || (t.profiles?.full_name || '') === requesterF) &&
         (!statusF || t.status === statusF) &&
-        (!searchF || t.title.toLowerCase().includes(searchF))
+        (!searchF || [t.title, t.description, t.profiles?.full_name].join(' ').toLowerCase().includes(searchF))
     );
 
-    // Monta as colunas do kanban (mesmas classes da tela de tickets)
+    portalRenderQueueKpis(filtered);
+
+    board.className = 'testes-kanban';
     board.innerHTML = '';
     PORTAL_STATUSES.forEach(status => {
-        const col = document.createElement('div');
-        col.className = 'ticket-kanban-column';
+        const doStatus = filtered.filter(t => t.status === status);
+        const col = document.createElement('section');
+        col.className = `testes-kanban__coluna testes-kanban__coluna--${PORTAL_QUEUE_COLUMN_TYPES[status] || 'cinza'}`;
         col.dataset.status = status;
-        const statusClass = status.toLowerCase().replace(/ /g, '-');
-        const count = filtered.filter(t => t.status === status).length;
-        col.innerHTML = `<div class="ticket-kanban-header status-${statusClass}">${status} (${count})</div><div class="ticket-cards-container"></div>`;
-        // drag & drop
-        const cont = col.querySelector('.ticket-cards-container');
-        col.addEventListener('dragover', e => { e.preventDefault(); cont.classList.add('drag-over'); });
-        col.addEventListener('dragleave', () => cont.classList.remove('drag-over'));
+        col.innerHTML = `
+            <header class="testes-kanban__cabecalho">
+                <span class="testes-kanban__titulo">${status}</span>
+                <span class="testes-kanban__contador">${doStatus.length}</span>
+            </header>
+            <div class="testes-kanban__cards"></div>`;
+        const cont = col.querySelector('.testes-kanban__cards');
+        if (!doStatus.length) {
+            cont.innerHTML = `<div class="testes-placeholder"><span class="testes-placeholder__txt">Nenhum chamado em "${status}".</span></div>`;
+        }
+        doStatus.forEach(t => cont.appendChild(portalQueueCard(t)));
+
+        col.addEventListener('dragover', e => { e.preventDefault(); cont.classList.add('testes-kanban__cards--alvo'); });
+        col.addEventListener('dragleave', () => cont.classList.remove('testes-kanban__cards--alvo'));
         col.addEventListener('drop', async e => {
-            e.preventDefault(); cont.classList.remove('drag-over');
+            e.preventDefault(); cont.classList.remove('testes-kanban__cards--alvo');
             const id = e.dataTransfer.getData('text/plain');
-            if (id) { await portalUpdateTicketField(id, 'status', status); portalRefreshInternalQueue(); }
+            if (id) { await portalUpdateTicketField(id, 'status', status); portalRefreshInternalQueue(true); }
         });
         board.appendChild(col);
     });
+}
 
-    filtered.forEach(t => {
-        const statusClass = t.status.toLowerCase().replace(/ /g, '-');
-        const priorityClass = (t.priority || 'Média').toLowerCase();
-        const cont = board.querySelector(`.ticket-kanban-column[data-status="${t.status}"] .ticket-cards-container`);
-        if (!cont) return;
-        const sla = portalSlaState(t);
-        const card = document.createElement('div');
-        card.className = `ticket-card status-${statusClass}`;
-        card.draggable = true;
-        card.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', t.id); e.dataTransfer.effectAllowed = 'move'; });
-        card.onclick = () => portalOpenTicketDetail(t.id, true);
-        card.innerHTML = `
-            <div class="ticket-card-header">
-              <span class="ticket-id">CHAMADO #${t.display_id}</span>
-              <span class="ticket-priority-badge priority-${priorityClass}">${t.priority}</span>
-            </div>
-            <div class="ticket-card-title">${t.title}</div>
-            <p style="font-size:0.85em; margin-bottom:10px; color:var(--bb-txt2,#777);">${(t.description||'').substring(0,90)}${(t.description||'').length>90?'…':''}</p>
-            <div style="margin-bottom:8px;">${sla.badge}</div>
-            ${portalSlaBar(t)}
-            <div class="ticket-card-footer">
-              <span class="ticket-origin">${t.support_projects?.name||''} · ${t.support_modules?.name||'—'}</span>
-              <span class="ticket-assignee">${t.profiles?.full_name || '—'}</span>
-            </div>`;
-        cont.appendChild(card);
-    });
+function portalRenderQueueKpis(tickets) {
+    const box = document.getElementById('pq-kpis');
+    if (!box) return;
+    const concluidos = t => ['Resolvido', 'Fechado'].includes(t.status);
+    const abertos = tickets.filter(t => !concluidos(t));
+    const criticos = abertos.filter(t => ['Crítica', 'Alta'].includes(t.priority)).length;
+    const estourados = abertos.filter(t => t.sla_resolution_due && new Date(t.sla_resolution_due).getTime() < Date.now()).length;
+    const fechados = tickets.length - abertos.length;
+    const kpi = (tipo, label, valor, hint) => `<div class="testes-kpi testes-kpi--${tipo}">
+        <div class="testes-kpi__label">${label}</div><div class="testes-kpi__valor">${valor}</div>
+        ${hint ? `<div class="testes-kpi__hint">${hint}</div>` : ''}</div>`;
+    box.innerHTML =
+        kpi('default', 'Chamados no quadro', tickets.length) +
+        kpi(abertos.length ? 'erro' : 'sucesso', 'Em aberto', abertos.length) +
+        kpi(criticos ? 'critico' : 'sucesso', 'Críticos / altos em aberto', criticos) +
+        kpi(estourados ? 'aviso' : 'sucesso', 'SLA estourado', estourados) +
+        kpi('sucesso', 'Resolvidos / fechados', fechados, tickets.length ? `${Math.round(fechados / tickets.length * 100)}% do quadro` : '');
+}
+
+function portalQueueCard(t) {
+    const card = document.createElement('div');
+    card.className = `testes-card-ticket testes-card-ticket--${portalSlug(t.status)} testes-card-ticket--prio-${portalSlug(t.priority || 'Média')}` +
+        `${['Resolvido', 'Fechado'].includes(t.status) ? ' testes-card-ticket--fechado' : ''} testes-kanban__card testes-kanban__card--clicavel`;
+    card.draggable = true;
+    card.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', t.id); e.dataTransfer.effectAllowed = 'move'; });
+    card.onclick = () => portalOpenTicketDetail(t.id, true);
+
+    const dias = Math.max(0, Math.floor((Date.now() - new Date(t.created_at).getTime()) / 864e5));
+    const idade = dias === 0 ? 'hoje' : `há ${dias} dia${dias > 1 ? 's' : ''}`;
+    const requerente = t.profiles?.full_name || '';
+    const origem = [t.support_projects?.name, t.support_modules?.name].filter(Boolean).join(' · ') || 'Sem projeto';
+    const desc = (t.description || '').trim();
+
+    card.innerHTML = `
+        <div class="testes-card-ticket__cab">
+            <span class="testes-card-ticket__id">#${t.display_id}</span>
+            <span class="testes-card-ticket__tipo">Chamado</span>
+            <span class="testes-card-ticket__prio"><span class="testes-badge testes-badge--${PORTAL_QUEUE_PRIORITY_TYPES[t.priority] || 'cinza'}">${portalEscapeHtml(t.priority || 'Média')}</span></span>
+        </div>
+        <div class="testes-card-ticket__titulo">${portalEscapeHtml(t.title)}</div>
+        <p class="testes-card-ticket__desc ${desc ? '' : 'testes-card-ticket__desc--vazia'}" title="${portalEscapeHtml(desc)}">${desc ? portalEscapeHtml(desc) : 'Sem descrição.'}</p>
+        <div class="portal-fila__sla-linha">${portalSlaBadgeDs(t)}</div>
+        ${portalSlaBarDs(t)}
+        <div class="testes-card-ticket__rodape">
+            <span class="testes-card-ticket__origem" title="Projeto · categoria">${portalEscapeHtml(origem)}</span>
+            ${requerente
+                ? `<span class="testes-card-ticket__resp" title="Requerente: ${portalEscapeHtml(requerente)}"><span class="testes-card-ticket__avatar" aria-hidden="true">${portalEscapeHtml(portalInitials(requerente))}</span><span class="testes-card-ticket__resp-nome">${portalEscapeHtml(requerente)}</span></span>`
+                : '<span class="testes-card-ticket__resp testes-card-ticket__resp--vazio">Sem requerente</span>'}
+            <span class="testes-card-ticket__idade ${dias >= 7 && !['Resolvido', 'Fechado'].includes(t.status) ? 'testes-card-ticket__idade--alerta' : ''}" title="Aberto em ${new Date(t.created_at).toLocaleString('pt-BR')}">${idade}</span>
+        </div>`;
+    return card;
 }
 
 // --- ADMIN: projetos, módulos, SLA, convidar clientes ----------------
@@ -1576,7 +1670,6 @@ async function portalSaveSla() {
 }
 
 async function portalInviteClient() {
-    const client = sbGetClient();
     const name = document.getElementById('pa-cli-name').value.trim();
     const email = document.getElementById('pa-cli-email').value.trim();
     const password = document.getElementById('pa-cli-pass').value;
@@ -1586,11 +1679,12 @@ async function portalInviteClient() {
     statusEl.style.color = '#3b6ff0'; statusEl.textContent = 'Criando acesso...';
 
     // Chama a Edge Function segura (service role) — cria o usuário-cliente.
-    const { data, error } = await client.functions.invoke('portal-admin', {
-        body: { action: 'create_client', email, password, full_name: name, project_ids: [portalCurrentProject().id], can_view_all: canViewAll }
-    });
-    if (error) { statusEl.style.color='#c0392b'; statusEl.textContent='' + (error.message || 'Falha ao criar cliente.'); return; }
-    if (data && data.error) { statusEl.style.color='#c0392b'; statusEl.textContent='' + data.error; return; }
+    let data;
+    try {
+        data = await portalAdminInvoke({ action: 'create_client', email, password, full_name: name, project_ids: [portalCurrentProject().id], can_view_all: canViewAll });
+    } catch (e) {
+        statusEl.style.color = '#c0392b'; statusEl.textContent = e.message || 'Falha ao criar cliente.'; return;
+    }
     statusEl.style.color = '#1e8e3e';
     statusEl.textContent = (data && data.message) ? '' + data.message : `Cliente ${email} criado com acesso a "${portalCurrentProject().name}".`;
     document.getElementById('pa-cli-name').value = '';

@@ -341,132 +341,175 @@ function makeResizable(element, data, handle) {
     };
 }
 
+// --- PLANEJAMENTO (quadro dos casos) -----------------------------------
+// Mesmo quadro do Portal de Testes do Fluig: faixa de KPIs, colunas com borda
+// colorida e cards com meta (ID + fluxo), detalhes (resp., entrega, peso) e
+// rodapé (prioridade, tickets abertos e tags).
+const PLANNING_COLUMNS = {
+    'backlog':   { title: 'Backlog / A fazer',       status: 'Pendente',   tipo: 'cinza' },
+    'analise':   { title: 'Em análise',              status: 'Em Análise', tipo: 'aviso' },
+    'corrigido': { title: 'Corrigido (p/ re-teste)', status: 'Corrigido',  tipo: 'info' },
+    'concluido': { title: 'Concluído',               status: 'Aprovado',   tipo: 'sucesso' }
+};
+const PLANNING_PRIORITY_TYPES = { 'Crítica': 'critico', 'Alta': 'erro', 'Média': 'aviso', 'Baixa': 'info' };
+
+function planningColumnOf(testCase) {
+    if (testCase.resultado === 'Aprovado' || testCase.resolutionStatus === 'Não será corrigido') return 'concluido';
+    if (testCase.resolutionStatus === 'Corrigido') return 'corrigido';
+    if (testCase.resolutionStatus === 'Em Análise') return 'analise';
+    return 'backlog';
+}
+
+function isPlanningOverdue(caseData) {
+    if (!caseData.dataEntrega) return false;
+    if (planningColumnOf(caseData) === 'concluido') return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return new Date(caseData.dataEntrega + 'T00:00:00') < today;
+}
+
+function planningMatchesFilters(testCase) {
+    const termo = (document.getElementById('plan-busca')?.value || '').trim().toLowerCase();
+    const tag = document.getElementById('plan-tag')?.value || '';
+    if (tag && !(testCase.tags || []).includes(tag)) return false;
+    if (!termo) return true;
+    return [testCase.displayId, testCase.itemTestado, testCase.descricao, testCase.responsavel, ...(testCase.tags || [])]
+        .join(' ').toLowerCase().includes(termo);
+}
+
+function renderPlanningTagFilter() {
+    const sel = document.getElementById('plan-tag');
+    if (!sel) return;
+    const atual = sel.value;
+    const tags = new Set();
+    Object.values(testCaseData).forEach(c => (c.tags || []).forEach(t => tags.add(t)));
+    sel.innerHTML = '<option value="">Todas as tags</option>' +
+        [...tags].sort().map(t => `<option value="${t}" ${t === atual ? 'selected' : ''}>${t}</option>`).join('');
+}
+
+function renderPlanningKpis(cases) {
+    const box = document.getElementById('plan-kpis');
+    if (!box) return;
+    const pesoDe = c => parseInt(c.peso, 10) || 0;
+    const pesoTotal = cases.reduce((s, c) => s + pesoDe(c), 0);
+    const pesoConcluido = cases.filter(c => planningColumnOf(c) === 'concluido').reduce((s, c) => s + pesoDe(c), 0);
+    const atrasadas = cases.filter(isPlanningOverdue).length;
+    const semResp = cases.filter(c => !(c.responsavel || '').trim()).length;
+    const semData = cases.filter(c => !c.dataEntrega).length;
+    const kpi = (tipo, label, valor, hint) => `<div class="testes-kpi testes-kpi--${tipo}">
+        <div class="testes-kpi__label">${label}</div><div class="testes-kpi__valor">${valor}</div>
+        ${hint ? `<div class="testes-kpi__hint">${hint}</div>` : ''}</div>`;
+    box.innerHTML =
+        kpi('default', 'Casos no quadro', cases.length) +
+        kpi('info', 'Peso total', pesoTotal, pesoTotal ? `${pesoConcluido} concluído (${Math.round(pesoConcluido / pesoTotal * 100)}%)` : '') +
+        kpi(atrasadas ? 'erro' : 'sucesso', 'Entregas atrasadas', atrasadas) +
+        kpi(semResp ? 'aviso' : 'sucesso', 'Sem responsável', semResp) +
+        kpi(semData ? 'aviso' : 'sucesso', 'Sem data de entrega', semData);
+}
+
 function renderKanbanBoard() {
     const boardContainer = document.getElementById('kanban-modal-board');
+    if (!boardContainer) return;
+    boardContainer.className = 'testes-kanban';
     boardContainer.innerHTML = '';
-    const columns = { 
-        'backlog': { title: 'Backlog / A Fazer', status: 'Pendente', cards: [] }, 
-        'analise': { title: 'Em Análise', status: 'Em Análise', cards: [] }, 
-        'corrigido': { title: 'Corrigido (Para Re-teste)', status: 'Corrigido', cards: [] }, 
-        'concluido': { title: 'Concluído', status: 'Aprovado', cards: [] } 
-    };
+    renderPlanningTagFilter();
 
-    for (const caseId in testCaseData) {
-        const testCase = testCaseData[caseId];
-        if (!testCase || typeof testCase.resultado === 'undefined' || typeof testCase.resolutionStatus === 'undefined') { 
-            console.warn('Caso de teste inválido ou incompleto ignorado:', { caseId, testCase }); 
-            continue; 
+    const validCases = Object.values(testCaseData).filter(testCase => {
+        if (!testCase || typeof testCase.resultado === 'undefined' || typeof testCase.resolutionStatus === 'undefined') {
+            console.warn('Caso de teste inválido ou incompleto ignorado:', testCase);
+            return false;
         }
+        return true;
+    });
+    const cases = validCases.filter(planningMatchesFilters);
+    renderPlanningKpis(cases);
 
-        if (testCase.resultado === 'Aprovado' || testCase.resolutionStatus === 'Não será corrigido') {
-            columns.concluido.cards.push(testCase);
-        } else if (testCase.resolutionStatus === 'Corrigido') {
-            columns.corrigido.cards.push(testCase);
-        } else if (testCase.resolutionStatus === 'Em Análise') {
-            columns.analise.cards.push(testCase);
-        } else {
-            columns.backlog.cards.push(testCase);
-        }
-    }
-
-    for (const columnKey in columns) {
-        const columnData = columns[columnKey];
-        const columnEl = document.createElement('div');
-        columnEl.className = 'kanban-column';
+    for (const columnKey in PLANNING_COLUMNS) {
+        const columnData = PLANNING_COLUMNS[columnKey];
+        const columnCases = cases.filter(c => planningColumnOf(c) === columnKey);
+        const columnEl = document.createElement('section');
+        columnEl.className = `testes-kanban__coluna testes-kanban__coluna--${columnData.tipo}`;
         columnEl.dataset.columnKey = columnKey;
         columnEl.dataset.status = columnData.status;
-        // Adicionado o contador no título da coluna (inicialmente 0)
-        columnEl.innerHTML = `<div class="kanban-column-header">${columnData.title} (0)</div><div class="kanban-cards-container"></div>`;
-        
-        const cardsContainer = columnEl.querySelector('.kanban-cards-container');
-        columnData.cards.forEach(cardData => cardsContainer.appendChild(createKanbanCard(cardData)));
-        
+        columnEl.innerHTML = `
+            <header class="testes-kanban__cabecalho">
+                <span class="testes-kanban__titulo">${columnData.title}</span>
+                <span class="testes-kanban__contador">${columnCases.length}</span>
+            </header>
+            <div class="testes-kanban__cards"></div>`;
+        const cardsContainer = columnEl.querySelector('.testes-kanban__cards');
+        if (columnCases.length === 0) {
+            cardsContainer.innerHTML = `<div class="testes-placeholder"><span class="testes-placeholder__txt">Nenhum caso em "${columnData.title}".</span></div>`;
+        }
+        columnCases.forEach(cardData => cardsContainer.appendChild(createKanbanCard(cardData)));
+
         columnEl.addEventListener('dragover', handleDragOver);
         columnEl.addEventListener('dragleave', handleDragLeave);
         columnEl.addEventListener('drop', handleDrop);
         boardContainer.appendChild(columnEl);
     }
-
-    // Após adicionar todos os cards, atualiza os contadores
-    boardContainer.querySelectorAll('.kanban-column').forEach(column => {
-        const header = column.querySelector('.kanban-column-header');
-        const cardCount = column.querySelector('.kanban-cards-container').children.length;
-        // Pega o texto original do título (ex: "Backlog / A Fazer")
-        const originalTitle = columns[column.dataset.columnKey].title;
-        header.textContent = `${originalTitle} (${cardCount})`;
-    });
 }
 
-// Substitua sua função createKanbanCard por esta
 function createKanbanCard(caseData) {
     const card = document.createElement('div');
-    card.className = 'kanban-card';
     const caseIdentifier = `test-case-${caseData.id}`;
+    const resultSlug = (caseData.resultado || 'pendente').toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ /g, '-');
+    const overdue = isPlanningOverdue(caseData);
+    card.className = `testes-card-plan testes-card-plan--${resultSlug} ${overdue ? 'testes-card-plan--atrasado' : ''} testes-kanban__card testes-kanban__card--clicavel`;
     card.id = `kanban-${caseIdentifier}`;
     card.dataset.caseId = caseIdentifier;
     card.draggable = true;
-
-    // Adiciona o evento de clique para abrir o novo modal de detalhes
     card.onclick = () => showKanbanCardDetailsModal(caseIdentifier);
 
-    // Lógica de alerta de atraso
-    const isOverdue = (() => {
-        if (!caseData.dataEntrega) return false;
-        const isDone = caseData.resultado === 'Aprovado' || caseData.resolutionStatus === 'Não será corrigido';
-        if (isDone) return false;
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const deliveryDate = new Date(caseData.dataEntrega + 'T00:00:00');
-        return deliveryDate < today;
-    })();
-
-    if (isOverdue) {
-        card.classList.add('overdue');
-    }
-
-    const statusClass = (caseData.resultado || 'Pendente').toLowerCase().replace(/ /g, '-');
-    card.classList.add(`status-${statusClass}`);
-
-    const formattedDate = caseData.dataEntrega 
-        ? new Date(caseData.dataEntrega + 'T00:00:00').toLocaleDateString('pt-BR') 
-        : 'N/A';
+    const fluxo = getTestCaseWorkflowStatus(caseData);
+    const fluxoTipo = (typeof WORKFLOW_BADGE_TYPES !== 'undefined' && WORKFLOW_BADGE_TYPES[fluxo]) || 'cinza';
+    const formattedDate = caseData.dataEntrega
+        ? new Date(caseData.dataEntrega + 'T00:00:00').toLocaleDateString('pt-BR')
+        : '-';
+    const prioridade = caseData.prioridadePlanejamento && caseData.prioridadePlanejamento !== 'N/A' ? caseData.prioridadePlanejamento : '';
+    const tickets = (caseData.tickets || []).map(id => ticketData[id]).filter(Boolean);
+    const abertos = tickets.filter(t => t.status !== 'Fechado').length;
 
     card.innerHTML = `
-        <div class="kanban-card-title">${caseData.itemTestado || 'Item não definido'}</div>
-        <div class="kanban-card-info">
-            <span>ID #${caseData.displayId}</span>
-            <span>${caseData.resultado || 'Pendente'}</span>
+        <div class="testes-card-plan__titulo">${caseData.itemTestado || 'Item não definido'}</div>
+        <div class="testes-card-plan__meta">
+            <span class="testes-card-plan__id">#${caseData.displayId}</span>
+            ${caseData.isReTest ? '<span class="testes-badge testes-badge--info">Re-teste</span>' : ''}
+            <span class="testes-badge testes-badge--${fluxoTipo}">${fluxo}</span>
         </div>
-        <div class="kanban-card-details">
-            <div class="kanban-detail-item"><strong>Resp:</strong> ${caseData.responsavel || 'N/A'}</div>
-            <div class="kanban-detail-item"><strong>Entrega:</strong> ${formattedDate}</div>
-            <div class="kanban-detail-item"><strong>Prio:</strong> <span class="priority-tag priority-${(caseData.prioridadePlanejamento || 'N/A').toLowerCase()}">${caseData.prioridadePlanejamento || 'N/A'}</span></div>
-            <div class="kanban-detail-item"><strong>Peso:</strong> ${caseData.peso || 'N/A'}</div>
-        </div>
-    `;
+        <dl class="testes-card-plan__detalhes">
+            <dt class="testes-card-plan__dt">Resp.</dt><dd class="testes-card-plan__dd">${caseData.responsavel || '-'}</dd>
+            <dt class="testes-card-plan__dt">Entrega</dt><dd class="testes-card-plan__dd ${overdue ? 'testes-card-plan__dd--alerta' : ''}">${formattedDate}</dd>
+            <dt class="testes-card-plan__dt">Peso</dt><dd class="testes-card-plan__dd">${caseData.peso && caseData.peso !== 'N/A' ? caseData.peso : '-'}</dd>
+        </dl>
+        <div class="testes-card-plan__rodape">
+            ${prioridade ? `<span class="testes-badge testes-badge--${PLANNING_PRIORITY_TYPES[prioridade] || 'cinza'}">${prioridade}</span>` : ''}
+            ${tickets.length ? `<span class="testes-badge testes-badge--${abertos ? 'erro' : 'sucesso'}">${abertos}/${tickets.length} ticket(s) aberto(s)</span>` : ''}
+            ${(caseData.tags || []).map(t => `<span class="testes-tag testes-tag--mini">${t}</span>`).join('')}
+        </div>`;
 
     card.addEventListener('dragstart', handleDragStart);
     return card;
 }
 
-
-
 function handleDragStart(e) {
-    e.dataTransfer.setData('text/plain', e.target.dataset.caseId);
+    e.dataTransfer.setData('text/plain', e.currentTarget.dataset.caseId);
     e.dataTransfer.effectAllowed = 'move';
+    e.currentTarget.classList.add('testes-kanban__card--arrastando');
 }
 
 function handleDragOver(e) {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    this.querySelector('.kanban-cards-container').classList.add('drag-over');
+    this.querySelector('.testes-kanban__cards').classList.add('testes-kanban__cards--alvo');
 }
 
-function handleDragLeave(e) { this.querySelector('.kanban-cards-container').classList.remove('drag-over'); }
+function handleDragLeave(e) { this.querySelector('.testes-kanban__cards').classList.remove('testes-kanban__cards--alvo'); }
 
 function handleDrop(e) {
     e.preventDefault();
-    this.querySelector('.kanban-cards-container').classList.remove('drag-over');
+    this.querySelector('.testes-kanban__cards').classList.remove('testes-kanban__cards--alvo');
     const caseId = e.dataTransfer.getData('text/plain');
     const targetStatus = this.dataset.status;
     const targetColumnKey = this.dataset.columnKey;
@@ -474,7 +517,7 @@ function handleDrop(e) {
     if (testCase) {
         if (targetColumnKey === 'concluido') {
             testCase.resultado = 'Aprovado';
-            testCase.resolutionStatus = 'Corrigido'; 
+            testCase.resolutionStatus = 'Corrigido';
         } else {
             testCase.resolutionStatus = targetStatus;
             if (testCase.resultado === 'Aprovado') testCase.resultado = 'Selecione um resultado';
@@ -486,7 +529,7 @@ function handleDrop(e) {
             const resultSelect = listCard.querySelector('select[onchange*="handleResultChange"]');
             if (resultSelect) {
                 resultSelect.value = testCase.resultado;
-                handleResultChange(caseId, resultSelect.value); 
+                handleResultChange(caseId, resultSelect.value);
             }
         }
         renderKanbanBoard();
@@ -502,8 +545,8 @@ function updateCommentButtonText(caseId) {
     if (!button) return;
     const count = testCaseData[caseId]?.devComments?.length || 0;
     const isHidden = wrapper.classList.contains('hidden-field');
-    const baseText = isHidden ? '💬 Exibir Comentários' : '💬 Ocultar Comentários';
-    const countBadge = count > 0 ? `<span class="comment-count-badge">${count}</span>` : '';
+    const baseText = isHidden ? 'Exibir comentários' : 'Ocultar comentários';
+    const countBadge = count > 0 ? `<span class="testes-badge testes-badge--info">${count}</span>` : '';
     button.innerHTML = `${baseText} ${countBadge}`;
 }
 
@@ -725,7 +768,7 @@ function renderTags(caseId) {
     const container = document.getElementById(`${caseId}-tags-container`);
     const tags = testCaseData[caseId]?.tags || [];
     if (!container) return;
-    container.innerHTML = tags.map(tag => `<span class="tag-pill">${tag}<button class="remove-tag-btn" onclick="removeTag('${caseId}', '${tag}')">&times;</button></span>`).join('');
+    container.innerHTML = tags.map(tag => `<span class="testes-tag">${tag}<button type="button" class="testes-tag__x" aria-label="Remover tag" onclick="removeTag('${caseId}', '${tag}')">&times;</button></span>`).join('');
 }
 
 function renderGlobalTagFilter() {
@@ -734,7 +777,7 @@ function renderGlobalTagFilter() {
     const allTags = new Set();
     Object.values(testCaseData).forEach(caseData => (caseData.tags || []).forEach(tag => allTags.add(tag)));
     const currentFilter = filterSelect.value;
-    filterSelect.innerHTML = '<option value="">Todas as Tags</option>';
+    filterSelect.innerHTML = '<option value="">Todas as tags</option>';
     Array.from(allTags).sort().forEach(tag => {
         const option = document.createElement('option');
         option.value = tag;

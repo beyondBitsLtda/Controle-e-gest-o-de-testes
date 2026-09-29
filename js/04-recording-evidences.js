@@ -245,41 +245,44 @@ function handleEvidenceUpload(caseId, files, isDevEvidence, commentIndex = null)
 
 function handleDevEvidenceUpload(caseId, commentIndex, files) { handleEvidenceUpload(caseId, files, true, commentIndex); }
 
+// Miniatura no padrão do Portal de Testes do Fluig (testes-evid__item/box):
+// imagem em miniatura, vídeo/log/fluxograma com rótulo, remover e legenda.
 function renderEvidencePreview(caseId, evidence, isDevEvidence, commentIndex = null) {
     const gridId = isDevEvidence ? `dev-evidence-grid-${caseId}-${commentIndex}` : `${caseId}-evidence-grid`;
     const uploadClass = isDevEvidence ? '.dev-evidence-upload' : '.evidence-upload';
     const grid = document.getElementById(gridId);
     if (!grid) return;
     const uploadLabel = grid.querySelector(uploadClass);
-    const previewWrapper = document.createElement('div');
-    previewWrapper.className = 'evidence-preview-wrapper';
-    let mediaElementHTML = '';
-    let analysisButtonHTML = '';
     const sanitizedEvidenceSrc = evidence.src ? evidence.src.replace(/'/g, "&apos;").replace(/"/g, "&quot;") : '';
-    const descriptionTagHTML = evidence.description ? `<div class="evidence-description-tag">${evidence.description}</div>` : '';
+    const openMedia = `openMediaModal('${sanitizedEvidenceSrc}', '${evidence.type}', '${evidence.name}')`;
+    const descriptionTagHTML = evidence.description ? `<div class="testes-evid__legenda-tag">${evidence.description}</div>` : '';
+
+    let boxClass = 'testes-evid__box';
+    let boxAction = openMedia;
+    let mediaElementHTML = '';
     if (evidence.type === 'text/mermaid') {
         const encodedSrc = btoa(encodeURIComponent(evidence.src));
-        mediaElementHTML = `<div class="log-preview preview-media" onclick="openFlowchartViewerModal('${encodedSrc}')">📈<br>Fluxograma</div>`;
+        boxClass += ' testes-evid__box--fluxo';
+        boxAction = `openFlowchartViewerModal('${encodedSrc}')`;
+        mediaElementHTML = `<span class="testes-evid__ic" aria-hidden="true">FLX</span><span class="testes-evid__rotulo">Fluxograma</span>`;
     } else if (evidence.type.startsWith('image/')) {
-        mediaElementHTML = `<img src="${sanitizedEvidenceSrc}" class="preview-media" onclick="openMediaModal('${sanitizedEvidenceSrc}', '${evidence.type}', '${evidence.name}')">`;
-        analysisButtonHTML = `<button class="btn btn-record" data-ai-feature="analyzeMedia" style="position:absolute; bottom:5px; left:5px; z-index:11; font-size:0.8rem; padding: 4px 8px;" onclick="analyzeImageWithAI(event, '${caseId}', '${sanitizedEvidenceSrc}', '${evidence.type}')">🤖 Analisar</button>`;
+        mediaElementHTML = `<img src="${sanitizedEvidenceSrc}" class="testes-evid__img" alt="Evidência">`;
     } else if (evidence.type.startsWith('video/')) {
-        mediaElementHTML = `<video src="${sanitizedEvidenceSrc}" class="preview-media" onclick="openMediaModal('${sanitizedEvidenceSrc}', '${evidence.type}', '${evidence.name}')"></video>`;
-        analysisButtonHTML = `<button class="btn btn-record" data-ai-feature="analyzeMedia" style="position:absolute; bottom:5px; left:5px; z-index:11; font-size:0.8rem; padding: 4px 8px;" onclick="analyzeVideoWithAI(event, '${caseId}', '${sanitizedEvidenceSrc}')">🤖 Analisar</button>`;
+        mediaElementHTML = `<video src="${sanitizedEvidenceSrc}" class="testes-evid__img" muted preload="metadata"></video><span class="testes-evid__ic testes-evid__ic--sobre" aria-hidden="true">VÍDEO</span>`;
     } else if (evidence.type.startsWith('text/plain')) {
-        mediaElementHTML = `<div class="log-preview preview-media" onclick="openMediaModal('${sanitizedEvidenceSrc}', '${evidence.type}', '${evidence.name}')">📝<br>Log.txt</div>`;
+        boxClass += ' testes-evid__box--log';
+        mediaElementHTML = `<span class="testes-evid__ic" aria-hidden="true">LOG</span><span class="testes-evid__rotulo">${evidence.name || 'log.txt'}</span>`;
     } else {
-        mediaElementHTML = `<div class="log-preview preview-media" onclick="openMediaModal('${sanitizedEvidenceSrc}', '${evidence.type}', '${evidence.name}')">📎<br>Anexo</div>`;
+        boxClass += ' testes-evid__box--log';
+        mediaElementHTML = `<span class="testes-evid__ic" aria-hidden="true">ANEXO</span><span class="testes-evid__rotulo">${evidence.name || 'arquivo'}</span>`;
     }
-    const removeBtnHTML = `<button class="remove-evidence-btn" onclick="(function(e){ e.stopPropagation(); removeEvidence('${caseId}', '${sanitizedEvidenceSrc}', ${isDevEvidence}, ${commentIndex}); e.target.parentElement.parentElement.remove(); })(event)">&times;</button>`;
+    const removeBtnHTML = `<button type="button" class="testes-evid__remover" aria-label="Remover" onclick="(function(e){ e.stopPropagation(); removeEvidence('${caseId}', '${sanitizedEvidenceSrc}', ${isDevEvidence}, ${commentIndex}); e.target.parentElement.parentElement.remove(); })(event)">&times;</button>`;
+    const descriptionInputHTML = `<input type="text" class="testes-evid__legenda" placeholder="Descrição da evidência..." value="${evidence.description || ''}" onkeyup="updateEvidenceDescription(event, '${caseId}', '${sanitizedEvidenceSrc}', ${isDevEvidence}, ${commentIndex})">`;
+
     const evidenceContainer = document.createElement('div');
-    evidenceContainer.className = 'evidence-item-container';
-    const descriptionInputHTML = `<input type="text" class="evidence-description-input" placeholder="Descrição da evidência..." value="${evidence.description || ''}" onkeyup="updateEvidenceDescription(event, '${caseId}', '${sanitizedEvidenceSrc}', ${isDevEvidence}, ${commentIndex})">`;
-    previewWrapper.innerHTML = descriptionTagHTML + mediaElementHTML + removeBtnHTML + analysisButtonHTML;
-    evidenceContainer.appendChild(previewWrapper);
-    evidenceContainer.innerHTML += descriptionInputHTML;
+    evidenceContainer.className = 'testes-evid__item';
+    evidenceContainer.innerHTML = `<div class="${boxClass}" onclick="${boxAction}">${descriptionTagHTML}${mediaElementHTML}${removeBtnHTML}</div>${descriptionInputHTML}`;
     grid.insertBefore(evidenceContainer, uploadLabel);
-    applyAISettings(); 
 }
 
 function updateEvidenceDescription(event, caseId, srcToFind, isDevEvidence, commentIndex) {
@@ -290,11 +293,11 @@ function updateEvidenceDescription(event, caseId, srcToFind, isDevEvidence, comm
         if (evidence) {
             evidence.description = newDescription;
             const container = event.target.previousElementSibling;
-            let tag = container.querySelector('.evidence-description-tag');
+            let tag = container.querySelector('.testes-evid__legenda-tag');
             if (newDescription) {
                 if (!tag) {
                     tag = document.createElement('div');
-                    tag.className = 'evidence-description-tag';
+                    tag.className = 'testes-evid__legenda-tag';
                     container.insertBefore(tag, container.firstChild);
                 }
                 tag.textContent = newDescription;
@@ -558,13 +561,14 @@ function filterFailedTests() {
         if (!caseData) return;
         card.style.display = isFilteringFailed && !isCaseFailed(caseData) ? 'none' : '';
     });
-    button.classList.toggle('active-filter', isFilteringFailed);
+    button.classList.toggle('testes-btn--primary', isFilteringFailed);
+    button.classList.toggle('testes-btn--ghost', !isFilteringFailed);
     if (isFilteringFailed) {
-        button.textContent = "✅";
-        button.title = "Mostrar Todos os Casos";
+        button.textContent = "Mostrar todos";
+        button.title = "Mostrar todos os casos";
     } else {
-        button.textContent = "⚠️";
-        button.title = "Mostrar Apenas Reprovados";
+        button.textContent = "Somente reprovados";
+        button.title = "Mostrar apenas os casos com falha em tratamento";
     }
 }
 

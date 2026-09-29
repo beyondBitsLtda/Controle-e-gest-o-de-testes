@@ -3,462 +3,629 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle de Plano de Testes</title>
+    <title>Control · Controle de Plano de Testes</title>
+    <link rel="icon" type="image/png" href="img/logo-control-sm.png">
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="css/control.css">
+    <link rel="stylesheet" href="css/beyond.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/tickets.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.7.0/mammoth.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 </head>
-<body>
+<body class="testes-app-body">
 
-    <div class="background-wallpaper">
-        <svg class="triangle-1" viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="0,0 100,0 0,100"></polygon></svg>
-        <svg class="triangle-2" viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="0,100 100,100 50,0"></polygon></svg>
-        <svg class="triangle-3" viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="100,0 100,100 0,100"></polygon></svg>
+<!-- Tela de carregamento: nasce com a página (antes de qualquer JS) e o
+     js/14-app-shell.js a remove quando o boot termina (login ou app). -->
+<div class="testes-tokens testes-splash testes-splash--beyond" id="app-splash" role="status" aria-live="polite">
+    <div class="testes-splash__centro">
+        <img class="testes-splash__logo-img" src="img/logo-control-contorno.png" alt="Control" width="360">
+        <div class="testes-splash__produto testes-splash__produto--centro">
+            <span class="testes-splash__produto-nome">Controle de Plano de Testes</span>
+            <span class="testes-splash__produto-sub">Casos &middot; Evidências &middot; Tickets</span>
+        </div>
+        <div class="testes-splash__trilha" aria-hidden="true">
+            <div class="testes-splash__progresso" id="app-splash-progresso"></div>
+        </div>
+        <div class="testes-splash__msg" id="app-splash-msg">Preparando o ambiente...</div>
     </div>
+    <div class="testes-splash__rodape">Beyond Bits &middot; Control</div>
+</div>
 
+<div class="testes testes--tema-claro testes--app" id="app-root">
 
-    <div class="container">
-       
-        <div class="header">
-             <img src="logo.png" alt="Logo da Empresa" class="header-logo">
-           
-            <div class="header-text">
-                
-                <h1>Controle de Plano de Testes</h1>
-                <p>Gerenciamento de Casos de Teste e Tickets</p>
-            </div>
+    <!-- ================================================================ -->
+    <!-- SIDEBAR                                                          -->
+    <!-- ================================================================ -->
+    <aside class="testes-sidebar">
+        <div class="testes-sidebar__brand">
+            <img class="testes-sidebar__logo-img" src="img/logo-control-contorno-sm.png" alt="Control">
+            <div class="testes-sidebar__sub">Controle de Plano de Testes</div>
         </div>
 
-        <div class="content-wrapper">
+        <nav class="testes-sidebar__nav" aria-label="Módulos do Control">
 
-            <aside class="sidebar">
-                
-                
-                <hr class="sidebar-divider">
-                
-                <h3>Relatórios e Reports</h3>
-                <button id="manage-tickets-btn" class="btn" style="background-color: #3b6ff0;" onclick="showTicketManagementView()">🎫 Gerenciar Tickets</button>
-                <button class="btn btn-email" onclick="exportForEmail()">📧 Exportar Relatório</button>
-                <button class="btn btn-roadmap" onclick="generateTestRoadmap()">🗺️ Gerar Roadmap</button>
-                <button class="btn" style="background-color: #8e44ad;" onclick="dbOpenDashboard()">📊 Dashboard</button>
-                <button id="retrospective-btn" class="btn" style="background-color: #3b6ff0;">▶️ Iniciar Retrospectiva</button>
-                <button id="analytics-btn" class="btn" style="background-color: #3b6ff0;">🔬 Análise de Riscos</button>
+            <div class="testes-sidebar__grupo">Execução</div>
+            <a href="#" class="testes-sidebar__link testes-sidebar__link--ativo" data-app-tab="casos">
+                <span class="testes-sidebar__ic" aria-hidden="true">CT</span>
+                <span class="testes-sidebar__label">Casos de teste</span>
+            </a>
+            <a href="#" class="testes-sidebar__link" data-app-tab="planejamento">
+                <span class="testes-sidebar__ic" aria-hidden="true">PL</span>
+                <span class="testes-sidebar__label">Planejamento</span>
+            </a>
+            <a href="#" class="testes-sidebar__link" data-app-tab="tickets">
+                <span class="testes-sidebar__ic" aria-hidden="true">TK</span>
+                <span class="testes-sidebar__label">Tickets</span>
+            </a>
 
-                <hr class="sidebar-divider">
+            <div class="testes-sidebar__grupo">Visão</div>
+            <a href="#" class="testes-sidebar__link" data-app-tab="dashboard">
+                <span class="testes-sidebar__ic" aria-hidden="true">DB</span>
+                <span class="testes-sidebar__label">Dashboard</span>
+            </a>
+            <a href="#" class="testes-sidebar__link" data-app-acao="roadmap">
+                <span class="testes-sidebar__ic" aria-hidden="true">RM</span>
+                <span class="testes-sidebar__label">Roadmap</span>
+            </a>
+            <a href="#" class="testes-sidebar__link" data-app-acao="retrospectiva">
+                <span class="testes-sidebar__ic" aria-hidden="true">RT</span>
+                <span class="testes-sidebar__label">Retrospectiva</span>
+            </a>
+            <a href="#" class="testes-sidebar__link" data-app-acao="riscos">
+                <span class="testes-sidebar__ic" aria-hidden="true">AN</span>
+                <span class="testes-sidebar__label">Análise de riscos</span>
+            </a>
 
-                <h3>Visualização e Configurações</h3>
-                <button id="view-toggle-btn" class="btn btn-import">    Planejamento      </button>
-                <button class="btn" style="background-color: #3b6ff0;" onclick="showControlPanel()">⚙️ Painel de Controle</button>
-
-                <hr class="sidebar-divider">
-
-                <h3>Backup</h3>
-                <button class="btn btn-import" onclick="exportCurrentStateToJSON()">📤 Exportar Backup</button>
-                <input type="file" id="import-projects-file" accept=".json" style="display: none;" onchange="importAndDisplayProject(event)">
-                <button class="btn btn-import" onclick="document.getElementById('import-projects-file').click()">📥 Importar Backup</button>
-
-            </aside>
-
-
-
-            <div class="main-content">
-                <div class="controls-section">
-                    <div class="csv-input-section">
-                        <h3>Importar Casos de Teste via CSV</h3>
-                        <p>Use um arquivo .csv para importar uma lista pronta de casos de teste.</p>
-                        
-                        <input type="file" id="csv-upload" accept=".csv" style="display: none;" onchange="handleCSVUpload(event)">
-                        <button class="btn btn-import" onclick="document.getElementById('csv-upload').click()">⬆️ Importar CSV</button>
-                    </div>
-
-                    <div class="filter-section">
-                        <label for="tag-filter">🏷️ Filtrar por Tag:</label>
-                        <select id="tag-filter" class="form-select" onchange="filterByTag()" style="width: 200px; padding: 10px;"></select>
-                    </div>
-                </div>
-
-                <div id="initial-view-container" style="display: none;">
-                    <h2>📂 Projetos Salvos</h2>
-                    <p>Selecione um projeto para carregar ou comece um novo adicionando um caso de teste.</p>
-                    <div id="initial-project-list" class="project-list-container">
-                        </div>
-                </div>
-                
-                <div id="test-case-container"></div>
-                
-                <div id="kanban-board-container" style="display: none;"></div>
-
-                <div id="ticket-management-container" style="display: none;">
-                    <div class="ticket-management-header">
-                        <h2>🎫 Gerenciamento de Tickets</h2>
-                        <p>Acompanhe, atribua e resolva os problemas gerados a partir dos casos de teste.</p>
-                        <button class="btn" style="background-color: #6c757d; margin-top: 10px;" onclick="showTestCaseView()">⬅️ Voltar para Casos de Teste</button>
-                    </div>
-                    <div class="ticket-filters">
-                        <select id="ticket-filter-status" class="form-select">
-                            <option value="">Todos os Status</option>
-                        </select>
-                        <select id="ticket-filter-priority" class="form-select">
-                            <option value="">Todas as Prioridades</option>
-                        </select>
-                        <input type="text" id="ticket-filter-assignee" class="form-input" placeholder="Filtrar por responsável...">
-                    </div>
-                    <div id="ticket-kanban-board" class="ticket-kanban-board">
-                        </div>
-                </div>
-
-
-                <div class="summary-section">
-                    <div class="summary-title">📊 Resumo Geral</div>
-                    <div class="summary-stats">
-                        <div class="stat-card"><div class="stat-number" id="total-cases">0</div><div class="stat-label">Total de Casos</div></div>
-                        <div class="stat-card"><div class="stat-number" id="total-approved">0</div><div class="stat-label">Aprovados</div></div>
-                        <div class="stat-card"><div class="stat-number" id="total-failed">0</div><div class="stat-label">Reprovados</div></div>
-                        <div class="stat-card"><div class="stat-number" id="total-invalid">0</div><div class="stat-label">Inválidos</div></div>
-                    </div>
-                </div>
-
-                <div class="console-log-section">
-                    <div class="console-log-header">
-                        <h2>📝 Logs do Console</h2>
-                        <button class="btn btn-clear-logs" onclick="clearCapturedLogs()">Limpar Logs</button>
-                    </div>
-                    <div id="log-output" class="log-output"></div>
-                </div>
+            <!-- Visível só para colaboradores (papel "interno"): o 13-client-portal.js
+                 remove a classe testes-oculto ao identificar o papel. -->
+            <div class="testes-oculto" id="portal-internal-btns">
+                <div class="testes-sidebar__grupo">Atendimento</div>
+                <a href="#" class="testes-sidebar__link" data-app-tab="chamados">
+                    <span class="testes-sidebar__ic" aria-hidden="true">CH</span>
+                    <span class="testes-sidebar__label">Chamados</span>
+                </a>
+                <a href="#" class="testes-sidebar__link" data-app-acao="admin-portal">
+                    <span class="testes-sidebar__ic" aria-hidden="true">GP</span>
+                    <span class="testes-sidebar__label">Gerenciar portal</span>
+                </a>
+                <a href="#" class="testes-sidebar__link" data-app-acao="acessos">
+                    <span class="testes-sidebar__ic" aria-hidden="true">AC</span>
+                    <span class="testes-sidebar__label">Gerenciar acessos</span>
+                </a>
             </div>
+
+            <div class="testes-sidebar__grupo">Dados</div>
+            <a href="#" class="testes-sidebar__link" id="sb-open-btn" data-app-acao="nuvem">
+                <span class="testes-sidebar__ic" aria-hidden="true">PR</span>
+                <span class="testes-sidebar__label">Projetos e runs</span>
+            </a>
+            <a href="#" class="testes-sidebar__link" data-app-acao="relatorio">
+                <span class="testes-sidebar__ic" aria-hidden="true">RE</span>
+                <span class="testes-sidebar__label">Exportar relatório</span>
+            </a>
+            <a href="#" class="testes-sidebar__link" data-app-acao="exportar-backup">
+                <span class="testes-sidebar__ic" aria-hidden="true">EB</span>
+                <span class="testes-sidebar__label">Exportar backup</span>
+            </a>
+            <a href="#" class="testes-sidebar__link" data-app-acao="importar-backup">
+                <span class="testes-sidebar__ic" aria-hidden="true">IB</span>
+                <span class="testes-sidebar__label">Importar backup</span>
+            </a>
+            <input type="file" id="import-projects-file" accept=".json" class="testes-oculto" onchange="importAndDisplayProject(event)">
+
+            <div class="testes-sidebar__grupo">Configurações</div>
+            <a href="#" class="testes-sidebar__link" data-app-acao="painel">
+                <span class="testes-sidebar__ic" aria-hidden="true">PC</span>
+                <span class="testes-sidebar__label">Painel de controle</span>
+            </a>
+        </nav>
+
+        <div class="testes-sidebar__foot">
+            <div class="testes-sidebar__usuario" id="sb-user-chip">
+                <span class="testes-sidebar__usuario-nome">Identificando...</span>
+            </div>
+            Beyond Bits &middot; Control
         </div>
-        
-        <div class="fixed-action-buttons">
-            <button class="btn btn-action-discrete" onclick="openFilterModal()" title="Painel de Filtros" style="background-color: #3b6ff0;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: white;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+    </aside>
+
+    <!-- ================================================================ -->
+    <!-- MAIN                                                             -->
+    <!-- ================================================================ -->
+    <div class="testes-main">
+
+        <header class="testes-topbar">
+            <div class="testes-topbar__titulo-wrap">
+                <div class="testes-topbar__crumb" id="app-crumb">Execução</div>
+                <h1 class="testes-topbar__titulo" id="app-titulo">Casos de teste</h1>
+            </div>
+
+            <div class="testes-topbar__spacer"></div>
+
+            <div class="testes-topbar__pill testes-topbar__pill--vazio" id="app-topbar-run">
+                <span class="testes-topbar__dot" aria-hidden="true"></span>
+                <span id="app-topbar-run-nome">Nenhuma run aberta</span>
+            </div>
+
+            <div class="testes-topbar__pill">
+                <span id="app-topbar-contagem">0 caso(s) - 0 ticket(s)</span>
+            </div>
+
+            <label class="testes-inline-campo">
+                <span>Tema</span>
+                <select class="testes-select testes-select--mini" id="app-tema" onchange="portalApplyTheme(this.value)">
+                    <option value="claro">Claro</option>
+                    <option value="escuro">Escuro</option>
+                    <option value="sepia">Sépia</option>
+                    <option value="terminal">Terminal</option>
+                    <option value="oceano">Oceano</option>
+                    <option value="roza">Roza</option>
+                </select>
+            </label>
+
+            <button type="button" class="testes-btn testes-btn--ghost testes-btn--mini" data-app-acao="nuvem"
+                    title="Salvar ou carregar runs na nuvem">
+                Nuvem
             </button>
-            <button class="btn btn-action-discrete btn-warning" id="filter-failed-button" onclick="filterFailedTests()" title="Mostrar Apenas Reprovados">⚠️</button>
-            <button class="btn btn-action-discrete btn-add" onclick="addNewTestCase()" title="Adicionar Novo Caso de Teste">➕</button>
-        </div>
+        </header>
+
+        <main class="testes-conteudo">
+
+            <!-- ============================================================ -->
+            <!-- ABA: CASOS DE TESTE                                          -->
+            <!-- ============================================================ -->
+            <section class="testes-tab testes-tab--ativa" data-app-secao="casos">
+
+                <div class="testes-toolbar">
+                    <div class="testes-toolbar__left">
+                        <input type="text" class="testes-input testes-input--busca" id="casos-busca"
+                               placeholder="Buscar por ID, item, descrição, responsável, tag...">
+                        <select id="tag-filter" class="testes-select testes-select--filtro" onchange="filterByTag()">
+                            <option value="">Todas as tags</option>
+                        </select>
+                        <button type="button" class="testes-btn testes-btn--ghost testes-btn--mini" onclick="openFilterModal()">
+                            Filtros avançados
+                        </button>
+                        <button type="button" class="testes-btn testes-btn--ghost testes-btn--mini" id="filter-failed-button"
+                                onclick="filterFailedTests()" title="Mostrar apenas os casos com falha em tratamento">
+                            Somente reprovados
+                        </button>
+                    </div>
+                    <div class="testes-toolbar__right">
+                        <input type="file" id="csv-upload" accept=".csv" class="testes-oculto" onchange="handleCSVUpload(event)">
+                        <button type="button" class="testes-btn testes-btn--ghost"
+                                onclick="document.getElementById('csv-upload').click()"
+                                title="Importar uma lista pronta de casos de teste em .csv">
+                            Importar CSV
+                        </button>
+                        <button type="button" class="testes-btn testes-btn--ghost" onclick="exportCurrentStateToJSON()"
+                                title="Baixar a run atual em .json (casos, tickets, histórico e evidências)">
+                            Exportar .json
+                        </button>
+                        <button type="button" class="testes-btn testes-btn--primary" onclick="addNewTestCase()">
+                            Novo caso de teste
+                        </button>
+                    </div>
+                </div>
+
+                <div class="testes-kpis" id="casos-kpis">
+                    <div class="testes-kpi testes-kpi--default">
+                        <div class="testes-kpi__label">Total de casos</div>
+                        <div class="testes-kpi__valor" id="total-cases">0</div>
+                    </div>
+                    <div class="testes-kpi testes-kpi--sucesso">
+                        <div class="testes-kpi__label">Aprovados</div>
+                        <div class="testes-kpi__valor" id="total-approved">0</div>
+                        <div class="testes-kpi__hint" id="total-approved-hint"></div>
+                    </div>
+                    <div class="testes-kpi testes-kpi--erro">
+                        <div class="testes-kpi__label">Reprovados</div>
+                        <div class="testes-kpi__valor" id="total-failed">0</div>
+                        <div class="testes-kpi__hint" id="total-failed-hint"></div>
+                    </div>
+                    <div class="testes-kpi testes-kpi--roxo">
+                        <div class="testes-kpi__label">Inválidos</div>
+                        <div class="testes-kpi__valor" id="total-invalid">0</div>
+                    </div>
+                    <div class="testes-kpi testes-kpi--cinza">
+                        <div class="testes-kpi__label">Pendentes</div>
+                        <div class="testes-kpi__valor" id="total-pending">0</div>
+                    </div>
+                    <div class="testes-kpi testes-kpi--aviso">
+                        <div class="testes-kpi__label">Tickets abertos</div>
+                        <div class="testes-kpi__valor" id="total-open-tickets">0</div>
+                    </div>
+                </div>
+
+                <div id="initial-view-container" class="testes-card testes-oculto">
+                    <div class="testes-card__titulo">Projetos salvos neste navegador</div>
+                    <div class="testes-card__corpo">
+                        <p class="testes-texto-apoio">Selecione um projeto para carregar, abra uma run da nuvem em
+                            <strong>Projetos e runs</strong> ou comece um novo com <strong>Novo caso de teste</strong>.</p>
+                        <div id="initial-project-list" class="project-list-container"></div>
+                    </div>
+                </div>
+
+                <div id="test-case-container"></div>
+
+                <details class="testes-card testes-console">
+                    <summary class="testes-card__titulo testes-console__resumo">
+                        <span>Logs do console</span>
+                        <button type="button" class="testes-btn testes-btn--ghost testes-btn--mini"
+                                onclick="event.preventDefault(); clearCapturedLogs()">Limpar logs</button>
+                    </summary>
+                    <div id="log-output" class="log-output testes-console__saida"></div>
+                </details>
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- ABA: PLANEJAMENTO (kanban dos casos)                         -->
+            <!-- ============================================================ -->
+            <section class="testes-tab" data-app-secao="planejamento">
+                <div class="testes-toolbar">
+                    <div class="testes-toolbar__left">
+                        <input type="text" class="testes-input testes-input--busca" id="plan-busca"
+                               placeholder="Buscar no quadro..." oninput="renderKanbanBoard()">
+                        <select id="plan-tag" class="testes-select testes-select--filtro" onchange="renderKanbanBoard()">
+                            <option value="">Todas as tags</option>
+                        </select>
+                        <button type="button" class="testes-btn testes-btn--ghost testes-btn--mini" onclick="openFilterModal()">
+                            Filtros avançados
+                        </button>
+                    </div>
+                    <div class="testes-toolbar__right">
+                        <button type="button" class="testes-btn testes-btn--primary" onclick="addNewTestCase()">
+                            Novo caso de teste
+                        </button>
+                    </div>
+                </div>
+                <div class="testes-kpis" id="plan-kpis"></div>
+                <div id="kanban-modal-board" class="testes-kanban"></div>
+                <!-- Mantido para compatibilidade: o código legado liga/desliga este nó. -->
+                <div id="kanban-modal" class="testes-oculto"></div>
+                <div id="kanban-board-container" class="testes-oculto"></div>
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- ABA: TICKETS (js/06-tickets.js)                              -->
+            <!-- ============================================================ -->
+            <section class="testes-tab" data-app-secao="tickets">
+                <div id="ticket-management-container">
+                    <div class="testes-toolbar" id="tk-filtros"></div>
+                    <div class="testes-kpis" id="tk-indicadores"></div>
+                    <div id="ticket-kanban-board"></div>
+                </div>
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- ABA: CHAMADOS DE CLIENTES (js/13-client-portal.js)           -->
+            <!-- ============================================================ -->
+            <section class="testes-tab" data-app-secao="chamados">
+                <div class="testes-toolbar" id="pq-filtros"></div>
+                <div class="testes-kpis" id="pq-kpis"></div>
+                <div id="pq-board" class="testes-kanban"></div>
+            </section>
+
+            <!-- ============================================================ -->
+            <!-- ABA: DASHBOARD (js/12-dashboard.js)                          -->
+            <!-- ============================================================ -->
+            <section class="testes-tab" data-app-secao="dashboard">
+                <div class="testes-toolbar" id="db-filtros"></div>
+                <div class="testes-dashboard" id="db-relatorio">
+                    <div class="testes-placeholder">Consolidando os indicadores...</div>
+                </div>
+            </section>
+
+        </main>
     </div>
+</div>
 
-
-
-
-
-    <div id="email-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'email-modal')">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <span class="modal-close" onclick="closeModal('email-modal')">&times;</span>
-            <h2>📧 Exportar Relatório</h2>
-            <p>Um relatório de texto simples será copiado para sua área de transferência.</p>
-            <p id="email-copy-feedback" style="font-weight: bold; margin-top: 10px;"></p>
-            <div class="modal-actions">
-                <a id="email-link" href="#" class="btn btn-email">Abrir Cliente de Email</a>
-                <button id="download-json-button" class="btn btn-import">Baixar Backup do Projeto</button>
+<!-- Modais legados: ancorados no <body>; .testes-tokens dá acesso aos tokens. -->
+<div class="testes-tokens testes-legado">
+        <div id="email-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'email-modal')">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="closeModal('email-modal')">&times;</span>
+                <h2>📧 Exportar Relatório</h2>
+                <p>Um relatório de texto simples será copiado para sua área de transferência.</p>
+                <p id="email-copy-feedback" style="font-weight: bold; margin-top: 10px;"></p>
+                <div class="modal-actions">
+                    <a id="email-link" href="#" class="btn btn-email">Abrir Cliente de Email</a>
+                    <button id="download-json-button" class="btn btn-import">Baixar Backup do Projeto</button>
+                </div>
             </div>
         </div>
-    </div>
     
-    <div id="media-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'media-modal')">
-        <div class="modal-content media-content" onclick="event.stopPropagation()">
-            <span class="modal-close" onclick="closeModal('media-modal')">&times;</span>
-            <div id="media-modal-player"></div>
+        <div id="media-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'media-modal')">
+            <div class="modal-content media-content" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="closeModal('media-modal')">&times;</span>
+                <div id="media-modal-player"></div>
+            </div>
         </div>
-    </div>
 
    
-    <div id="save-run-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'save-run-modal')">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <span class="modal-close" onclick="closeModal('save-run-modal')">&times;</span>
-            <h2>💾 Salvar Execução de Teste</h2>
-            <div class="form-group">
-                <label for="macro-project-select" class="form-label">Selecione o Macro-Projeto:</label>
-                <select id="macro-project-select" class="form-select"></select>
-            </div>
-            <div class="form-group">
-                <label for="run-name-input" class="form-label">Nome da Execução:</label>
-                <input type="text" id="run-name-input" class="form-input" placeholder="Ex: Teste de Regressão Sprint 15">
-            </div>
-            <div class="modal-actions">
-                <button class="btn btn-add" onclick="executeSaveRun()">Salvar Execução</button>
+        <div id="save-run-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'save-run-modal')">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="closeModal('save-run-modal')">&times;</span>
+                <h2>💾 Salvar Execução de Teste</h2>
+                <div class="form-group">
+                    <label for="macro-project-select" class="form-label">Selecione o Macro-Projeto:</label>
+                    <select id="macro-project-select" class="form-select"></select>
+                </div>
+                <div class="form-group">
+                    <label for="run-name-input" class="form-label">Nome da Execução:</label>
+                    <input type="text" id="run-name-input" class="form-input" placeholder="Ex: Teste de Regressão Sprint 15">
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-add" onclick="executeSaveRun()">Salvar Execução</button>
+                </div>
             </div>
         </div>
-    </div>
     
-    <div id="load-run-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'load-run-modal')">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <span class="modal-close" onclick="closeModal('load-run-modal')">&times;</span>
-            <h2 id="load-run-modal-title">📂 Carregar Execução</h2>
-            <div id="run-list-container" class="project-list-container"></div>
-             <div class="modal-actions">
-                <button class="btn btn-history" onclick="showLoadMacroProjectSelectionModal()">⬅️ Voltar para Macro-Projetos</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="project-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'project-modal')">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <span class="modal-close" onclick="closeModal('project-modal')">&times;</span>
-            <h2>📂 Selecione um Macro-Projeto</h2>
-            <div id="project-list-container" class="project-list-container"></div>
-        </div>
-    </div>
-
-    <div id="video-commenter-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'video-commenter-modal')">
-        <div class="modal-content" id="video-commenter-content" onclick="event.stopPropagation()">
-             <span class="modal-close" onclick="closeModal('video-commenter-modal')">&times;</span>
-            <div class="video-commenter-wrapper">
-                <div id="video-main-container" class="video-commenter-main">
-                    <video id="video-commenter-player" controls></video>
-                    <canvas id="video-drawing-canvas"></canvas>
-                </div>
-                <div class="video-commenter-sidebar">
-                    <div class="commenter-header">
-                        <h2 id="commenter-title" class="commenter-title">Título do Teste</h2>
-                        <p id="commenter-author-date" class="commenter-author-date">Criado em...</p>
-                        <div id="video-drawing-tools" class="video-drawing-tools">
-                            <button id="pencil-tool-btn" class="btn-tool active" title="Ativar Desenho">✏️</button>
-                            <div id="color-palette-video" class="color-palette"></div>
-                            <button id="clear-canvas-btn" class="btn-tool" title="Limpar Desenhos">🗑️</button>
-                            <button id="add-postit-btn" class="btn-add-postit" title="Adicionar Post-it">📌</button>
-                        </div>
-                    </div>
-                    <ol id="comment-steps-list"></ol>
-                    <div id="comment-reply-section">
-                        <textarea id="new-comment-textarea" placeholder="Adicione um novo passo ou comentário..."></textarea>
-                        <button id="add-comment-btn" class="btn">Comentar no tempo atual</button>
-                    </div>
+        <div id="load-run-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'load-run-modal')">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="closeModal('load-run-modal')">&times;</span>
+                <h2 id="load-run-modal-title">📂 Carregar Execução</h2>
+                <div id="run-list-container" class="project-list-container"></div>
+                 <div class="modal-actions">
+                    <button class="btn btn-history" onclick="showLoadMacroProjectSelectionModal()">⬅️ Voltar para Macro-Projetos</button>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div id="recording-preview-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'recording-preview-modal')">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <span class="modal-close" onclick="discardRecording()">&times;</span>
-            <h2>📼 Pré-visualização da Gravação</h2>
-            <video id="recording-preview-player" controls style="width: 100%; border-radius: 8px; margin-top: 15px;"></video>
-            <div class="modal-actions">
-                <button class="btn btn-remove" onclick="discardRecording()">Descartar</button>
-                <button class="btn btn-add" onclick="attachRecording()">Anexar Gravação</button>
+        <div id="project-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'project-modal')">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="closeModal('project-modal')">&times;</span>
+                <h2>📂 Selecione um Macro-Projeto</h2>
+                <div id="project-list-container" class="project-list-container"></div>
             </div>
         </div>
-    </div>
 
-    <div id="roadmap-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'roadmap-modal')">
-        <div class="modal-content roadmap-modal-content" onclick="event.stopPropagation()">
-            <span class="modal-close" onclick="closeModal('roadmap-modal')">&times;</span>
-            <div class="roadmap-output">
-                <div class="roadmap-container">
-                    <h2>🗺️ Roadmap do Plano de Testes</h2>
-                    <p>Visão geral do progresso e resultados do ciclo de testes atual.</p>
-                    <div id="roadmap-ai-summary" class="roadmap-highlight-section" style="display: none; text-align: left;"></div>
-                    <div class="roadmap-charts">
-                        <div class="chart-container">
-                            <h3>Resultados Gerais</h3>
-                            <canvas id="resultsChart"></canvas>
-                        </div>
-                        <div class="chart-container">
-                            <h3>Tipos de Falha (Reprovados)</h3>
-                            <canvas id="failureTypesChart"></canvas>
-                        </div>
+        <div id="video-commenter-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'video-commenter-modal')">
+            <div class="modal-content" id="video-commenter-content" onclick="event.stopPropagation()">
+                 <span class="modal-close" onclick="closeModal('video-commenter-modal')">&times;</span>
+                <div class="video-commenter-wrapper">
+                    <div id="video-main-container" class="video-commenter-main">
+                        <video id="video-commenter-player" controls></video>
+                        <canvas id="video-drawing-canvas"></canvas>
                     </div>
-                    <div id="roadmap-highlight-section" class="roadmap-highlight-section" style="display: none;">
-                        <h3>🔄 Ponto de Atenção: Re-testes</h3>
-                        <p>O caso <strong class="highlight-id"></strong> (<em class="highlight-item"></em>) foi o que mais precisou de re-testes, com um total de <strong class="highlight-count"></strong> execuções.</p>
-                    </div>
-                    <div id="roadmap-textual-details" class="roadmap-details"></div>
-                </div>
-            </div>
-             <div class="modal-actions">
-                <button class="btn btn-email" onclick="copyRoadmapText()">Copiar Texto</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="log-attach-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'log-attach-modal')">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <span class="modal-close" onclick="closeModal('log-attach-modal')">&times;</span>
-            <h2>📝 Anexar Log do Console</h2>
-            <p>Cole o log copiado do console de desenvolvedor (F12) na área abaixo.</p>
-            <textarea id="log-attach-textarea" placeholder="Cole o texto do log aqui..."></textarea>
-            <div class="modal-actions">
-                <button class="btn btn-add" onclick="attachPastedLogs()">Anexar Log</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="flowchart-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'flowchart-modal')">
-        <div class="modal-content flowchart-editor-content" onclick="event.stopPropagation()">
-            <span class="modal-close" onclick="closeModal('flowchart-modal')">&times;</span>
-            <h2>Criar Fluxograma Manualmente</h2>
-            <div class="flowchart-editor-container">
-                <div class="flowchart-step"><label>Código Mermaid (editável):</label><textarea id="flowchart-code" oninput="renderFlowchartPreview()"></textarea></div>
-                <div class="flowchart-step"><label>Pré-visualização:</label><div id="flowchart-preview" class="mermaid"></div></div>
-            </div>
-            <div class="modal-actions">
-                <button class="btn btn-remove" onclick="closeModal('flowchart-modal')">Cancelar</button>
-                <button class="btn btn-add" onclick="attachFlowchart()">📎 Anexar como Evidência</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="flowchart-viewer-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'flowchart-viewer-modal')">
-        <div class="modal-content flowchart-viewer-content" onclick="event.stopPropagation()">
-            <span class="modal-close" onclick="closeModal('flowchart-viewer-modal')">&times;</span>
-            <h2>🗺️ Visualizador de Fluxograma</h2>
-            <div id="flowchart-viewer-output" class="mermaid"></div>
-        </div>
-    </div>
-
-    <div id="kanban-modal" class="modal-overlay">
-        <div class="modal-content kanban-modal-content">
-            <span class="modal-close" onclick="toggleView()">&times;</span>
-            <h2>Quadro de Acompanhamento</h2>
-            <div id="kanban-modal-board" class="kanban-board-container-fullscreen"></div>
-        </div>
-    </div>
-
-    <div id="control-panel-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'control-panel-modal')">
-        <div class="modal-content control-panel-content" onclick="event.stopPropagation()">
-            <span class="modal-close" onclick="closeModal('control-panel-modal')">&times;</span>
-            <h2 id="ai-correction-title">⚙️ Painel de Controle do Tester</h2>
-            <div class="panel-sections-wrapper">
-                <div class="panel-section profile-section">
-                    <h3>Meu Perfil</h3>
-                    <div class="profile-details">
-                        <img id="control-panel-img" src="profile_default.png" alt="Foto de Perfil" class="profile-picture" onclick="document.getElementById('profile-pic-upload').click()">
-                        <input type="file" id="profile-pic-upload" accept="image/*" style="display: none;" onchange="handleProfilePictureUpload(event)">
-                        <div class="profile-info">
-                            <label for="control-panel-name">Nome de Tester:</label>
-                            <input type="text" id="control-panel-name" class="form-input">
-                            <small>Este nome será usado em seus comentários.</small>
+                    <div class="video-commenter-sidebar">
+                        <div class="commenter-header">
+                            <h2 id="commenter-title" class="commenter-title">Título do Teste</h2>
+                            <p id="commenter-author-date" class="commenter-author-date">Criado em...</p>
+                            <div id="video-drawing-tools" class="video-drawing-tools">
+                                <button id="pencil-tool-btn" class="btn-tool active" title="Ativar Desenho">✏️</button>
+                                <div id="color-palette-video" class="color-palette"></div>
+                                <button id="clear-canvas-btn" class="btn-tool" title="Limpar Desenhos">🗑️</button>
+                                <button id="add-postit-btn" class="btn-add-postit" title="Adicionar Post-it">📌</button>
+                            </div>
                         </div>
-                    </div>
-                </div>
-                <div class="panel-section stats-section">
-                    <h3>Minhas Estatísticas (Projeto Atual)</h3>
-                    <div class="stats-grid">
-                        <div class="stat-item">
-                            <span class="stat-value" id="cp-total-tests">0</span>
-                            <span class="stat-title">Total</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-value" id="cp-approved-tests">0</span>
-                            <span class="stat-title">Aprovados</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-value" id="cp-failed-tests">0</span>
-                            <span class="stat-title">Reprovados</span>
+                        <ol id="comment-steps-list"></ol>
+                        <div id="comment-reply-section">
+                            <textarea id="new-comment-textarea" placeholder="Adicione um novo passo ou comentário..."></textarea>
+                            <button id="add-comment-btn" class="btn">Comentar no tempo atual</button>
                         </div>
                     </div>
                 </div>
             </div>
-       <div class="panel-section settings-section">
-                <h3>Configurações de Aparência</h3>
-                <div class="setting-toggle">
-                    <label for="theme-select">Tema de cores</label>
-                    <select id="theme-select" onchange="portalApplyTheme(this.value)" style="padding:8px 10px; border-radius:8px; border:1px solid var(--bb-border,#ccc); background:var(--bb-surface,#fff); color:var(--bb-txt1,#222); font-size:0.95em;">
-                        <option value="claro">Claro</option>
-                        <option value="escuro">Escuro</option>
-                        <option value="sepia">Sépia</option>
-                        <option value="terminal">Terminal</option>
-                        <option value="oceano">Oceano</option>
-                        <option value="roza">Roza</option>
+        </div>
+
+        <div id="recording-preview-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'recording-preview-modal')">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="discardRecording()">&times;</span>
+                <h2>📼 Pré-visualização da Gravação</h2>
+                <video id="recording-preview-player" controls style="width: 100%; border-radius: 8px; margin-top: 15px;"></video>
+                <div class="modal-actions">
+                    <button class="btn btn-remove" onclick="discardRecording()">Descartar</button>
+                    <button class="btn btn-add" onclick="attachRecording()">Anexar Gravação</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="roadmap-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'roadmap-modal')">
+            <div class="modal-content roadmap-modal-content" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="closeModal('roadmap-modal')">&times;</span>
+                <div class="roadmap-output">
+                    <div class="roadmap-container">
+                        <h2>🗺️ Roadmap do Plano de Testes</h2>
+                        <p>Visão geral do progresso e resultados do ciclo de testes atual.</p>
+                        <div id="roadmap-ai-summary" class="roadmap-highlight-section" style="display: none; text-align: left;"></div>
+                        <div class="roadmap-charts">
+                            <div class="chart-container">
+                                <h3>Resultados Gerais</h3>
+                                <canvas id="resultsChart"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <h3>Tipos de Falha (Reprovados)</h3>
+                                <canvas id="failureTypesChart"></canvas>
+                            </div>
+                        </div>
+                        <div id="roadmap-highlight-section" class="roadmap-highlight-section" style="display: none;">
+                            <h3>🔄 Ponto de Atenção: Re-testes</h3>
+                            <p>O caso <strong class="highlight-id"></strong> (<em class="highlight-item"></em>) foi o que mais precisou de re-testes, com um total de <strong class="highlight-count"></strong> execuções.</p>
+                        </div>
+                        <div id="roadmap-textual-details" class="roadmap-details"></div>
+                    </div>
+                </div>
+                 <div class="modal-actions">
+                    <button class="btn btn-email" onclick="copyRoadmapText()">Copiar Texto</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="log-attach-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'log-attach-modal')">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="closeModal('log-attach-modal')">&times;</span>
+                <h2>📝 Anexar Log do Console</h2>
+                <p>Cole o log copiado do console de desenvolvedor (F12) na área abaixo.</p>
+                <textarea id="log-attach-textarea" placeholder="Cole o texto do log aqui..."></textarea>
+                <div class="modal-actions">
+                    <button class="btn btn-add" onclick="attachPastedLogs()">Anexar Log</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="flowchart-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'flowchart-modal')">
+            <div class="modal-content flowchart-editor-content" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="closeModal('flowchart-modal')">&times;</span>
+                <h2>Criar Fluxograma Manualmente</h2>
+                <div class="flowchart-editor-container">
+                    <div class="flowchart-step"><label>Código Mermaid (editável):</label><textarea id="flowchart-code" oninput="renderFlowchartPreview()"></textarea></div>
+                    <div class="flowchart-step"><label>Pré-visualização:</label><div id="flowchart-preview" class="mermaid"></div></div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-remove" onclick="closeModal('flowchart-modal')">Cancelar</button>
+                    <button class="btn btn-add" onclick="attachFlowchart()">📎 Anexar como Evidência</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="flowchart-viewer-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'flowchart-viewer-modal')">
+            <div class="modal-content flowchart-viewer-content" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="closeModal('flowchart-viewer-modal')">&times;</span>
+                <h2>🗺️ Visualizador de Fluxograma</h2>
+                <div id="flowchart-viewer-output" class="mermaid"></div>
+            </div>
+        </div>
+
+        <div id="control-panel-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'control-panel-modal')">
+            <div class="modal-content control-panel-content" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="closeModal('control-panel-modal')">&times;</span>
+                <h2 id="ai-correction-title">⚙️ Painel de Controle do Tester</h2>
+                <div class="panel-sections-wrapper">
+                    <div class="panel-section profile-section">
+                        <h3>Meu Perfil</h3>
+                        <div class="profile-details">
+                            <img id="control-panel-img" src="profile_default.png" alt="Foto de Perfil" class="profile-picture" onclick="document.getElementById('profile-pic-upload').click()">
+                            <input type="file" id="profile-pic-upload" accept="image/*" style="display: none;" onchange="handleProfilePictureUpload(event)">
+                            <div class="profile-info">
+                                <label for="control-panel-name">Nome de Tester:</label>
+                                <input type="text" id="control-panel-name" class="form-input">
+                                <small>Este nome será usado em seus comentários.</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="panel-section stats-section">
+                        <h3>Minhas Estatísticas (Projeto Atual)</h3>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <span class="stat-value" id="cp-total-tests">0</span>
+                                <span class="stat-title">Total</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="cp-approved-tests">0</span>
+                                <span class="stat-title">Aprovados</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="cp-failed-tests">0</span>
+                                <span class="stat-title">Reprovados</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+           <div class="panel-section settings-section">
+                    <h3>Configurações de Aparência</h3>
+                    <div class="setting-toggle">
+                        <label for="theme-select">Tema de cores</label>
+                        <select id="theme-select" onchange="portalApplyTheme(this.value)" style="padding:8px 10px; border-radius:8px; border:1px solid var(--bb-border,#ccc); background:var(--bb-surface,#fff); color:var(--bb-txt1,#222); font-size:0.95em;">
+                            <option value="claro">Claro</option>
+                            <option value="escuro">Escuro</option>
+                            <option value="sepia">Sépia</option>
+                            <option value="terminal">Terminal</option>
+                            <option value="oceano">Oceano</option>
+                            <option value="roza">Roza</option>
+                        </select>
+                    </div>
+                    <!-- Mantido oculto: o modo noturno agora é o tema "Escuro". -->
+                    <input type="checkbox" id="toggle-dark-mode" style="display:none">
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-add" onclick="saveUserSettings()">Salvar e Fechar</button>
+                </div>
+            </div>
+        </div>
+        <div id="filter-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'filter-modal')">
+            <div class="modal-content filter-modal-content" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="closeModal('filter-modal')">&times;</span>
+                <h2>Painel de Filtros Avançados</h2>
+                <p>Selecione um ou mais critérios. Os casos de teste exibidos precisarão atender a TODAS as categorias selecionadas.</p>
+                <div class="filter-grid">
+                    <div class="filter-group">
+                        <h3>Status do Fluxo</h3>
+                        <div id="filter-group-status" class="filter-options"></div>
+                    </div>
+                    <div class="filter-group">
+                        <h3>Tipo de Teste</h3>
+                        <div id="filter-group-test-type" class="filter-options"></div>
+                    </div>
+                    <div class="filter-group">
+                        <h3>Tipo de Falha</h3>
+                        <div id="filter-group-failure-type" class="filter-options"></div>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-remove" onclick="clearFilters()">Limpar Filtros</button>
+                    <button class="btn btn-add" onclick="applyFilters()">Aplicar Filtros</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="history-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'history-modal')">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="closeModal('history-modal')">&times;</span>
+                <h2>📜 Histórico de Status</h2>
+                <p id="history-modal-title" style="text-align: center; font-weight: bold; margin-bottom: 20px;"></p>
+                <div id="history-modal-content" class="history-list-container">
+                    </div>
+            </div>
+        </div>
+
+        <div id="kanban-card-details-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'kanban-card-details-modal')">
+            <div class="modal-content card-details-modal-content" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="closeModal('kanban-card-details-modal')">&times;</span>
+                <div id="card-details-modal-body">
+                </div>
+            </div>
+        </div>
+
+        <div id="retrospective-modal" class="modal-overlay">
+            <div class="modal-content retrospective-modal-content">
+                <span class="modal-close" onclick="closeModal('retrospective-modal')">&times;</span>
+                <h2>Retrospectiva Animada dos Testes</h2>
+                <div id="retrospective-container" class="retrospective-container">
+                    <div id="retrospective-timeline-lanes">
+                    </div>
+                </div>
+                <div id="retrospective-details-panel" class="retrospective-details-panel">
+                    Passe o mouse sobre um evento para ver os detalhes ou clique em ▶️ para iniciar.
+                </div>
+                <div id="retrospective-controls" class="retrospective-controls">
+                    <button id="retrospective-play-pause-btn" class="btn">▶️</button>
+                    <span id="retrospective-timer" class="retrospective-timer">00:00 / 00:00</span>
+                    <input type="range" id="retrospective-scrubber" min="0" max="1000" value="0" class="retrospective-scrubber">
+                    <label for="retrospective-speed-control" class="retrospective-speed-label">Velocidade:</label>
+                    <select id="retrospective-speed-control" class="form-select" style="width: auto;">
+                        <option value="0.5">0.5x</option>
+                        <option value="1" selected>1x</option>
+                        <option value="2">2x</option>
+                        <option value="5">5x</option>
                     </select>
                 </div>
-                <!-- Mantido oculto: o modo noturno agora é o tema "Escuro". -->
-                <input type="checkbox" id="toggle-dark-mode" style="display:none">
-            </div>
-            <div class="modal-actions">
-                <button class="btn btn-add" onclick="saveUserSettings()">Salvar e Fechar</button>
             </div>
         </div>
-    </div>
-    <div id="filter-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'filter-modal')">
-        <div class="modal-content filter-modal-content" onclick="event.stopPropagation()">
-            <span class="modal-close" onclick="closeModal('filter-modal')">&times;</span>
-            <h2>Painel de Filtros Avançados</h2>
-            <p>Selecione um ou mais critérios. Os casos de teste exibidos precisarão atender a TODAS as categorias selecionadas.</p>
-            <div class="filter-grid">
-                <div class="filter-group">
-                    <h3>Status do Fluxo</h3>
-                    <div id="filter-group-status" class="filter-options"></div>
-                </div>
-                <div class="filter-group">
-                    <h3>Tipo de Teste</h3>
-                    <div id="filter-group-test-type" class="filter-options"></div>
-                </div>
-                <div class="filter-group">
-                    <h3>Tipo de Falha</h3>
-                    <div id="filter-group-failure-type" class="filter-options"></div>
-                </div>
-            </div>
-            <div class="modal-actions">
-                <button class="btn btn-remove" onclick="clearFilters()">Limpar Filtros</button>
-                <button class="btn btn-add" onclick="applyFilters()">Aplicar Filtros</button>
-            </div>
-        </div>
-    </div>
 
-    <div id="history-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'history-modal')">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <span class="modal-close" onclick="closeModal('history-modal')">&times;</span>
-            <h2>📜 Histórico de Status</h2>
-            <p id="history-modal-title" style="text-align: center; font-weight: bold; margin-bottom: 20px;"></p>
-            <div id="history-modal-content" class="history-list-container">
-                </div>
-        </div>
-    </div>
-
-    <div id="ticket-details-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'ticket-details-modal')">
-        <div class="modal-content" id="ticket-details-content" onclick="event.stopPropagation()">
-             <span class="modal-close" onclick="closeModal('ticket-details-modal')">&times;</span>
-             <div id="ticket-details-body">
-                </div>
-        </div>
-    </div>
-
-    <div id="kanban-card-details-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'kanban-card-details-modal')">
-        <div class="modal-content card-details-modal-content" onclick="event.stopPropagation()">
-            <span class="modal-close" onclick="closeModal('kanban-card-details-modal')">&times;</span>
-            <div id="card-details-modal-body">
+        <div id="analytics-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'analytics-modal')">
+            <div class="modal-content analytics-modal-content">
+                <span class="modal-close" onclick="closeModal('analytics-modal')">&times;</span>
+                <h2>Painel de Análise de Riscos</h2>
+                <p class="analytics-subtitle">Insights automáticos baseados nos dados atuais do projeto.</p>
+                <div id="analytics-dashboard" class="analytics-dashboard">
+                    </div>
             </div>
         </div>
-    </div>
+</div>
 
-    <div id="retrospective-modal" class="modal-overlay">
-        <div class="modal-content retrospective-modal-content">
-            <span class="modal-close" onclick="closeModal('retrospective-modal')">&times;</span>
-            <h2>Retrospectiva Animada dos Testes</h2>
-            <div id="retrospective-container" class="retrospective-container">
-                <div id="retrospective-timeline-lanes">
-                </div>
-            </div>
-            <div id="retrospective-details-panel" class="retrospective-details-panel">
-                Passe o mouse sobre um evento para ver os detalhes ou clique em ▶️ para iniciar.
-            </div>
-            <div id="retrospective-controls" class="retrospective-controls">
-                <button id="retrospective-play-pause-btn" class="btn">▶️</button>
-                <span id="retrospective-timer" class="retrospective-timer">00:00 / 00:00</span>
-                <input type="range" id="retrospective-scrubber" min="0" max="1000" value="0" class="retrospective-scrubber">
-                <label for="retrospective-speed-control" class="retrospective-speed-label">Velocidade:</label>
-                <select id="retrospective-speed-control" class="form-select" style="width: auto;">
-                    <option value="0.5">0.5x</option>
-                    <option value="1" selected>1x</option>
-                    <option value="2">2x</option>
-                    <option value="5">5x</option>
-                </select>
-            </div>
-        </div>
-    </div>
-
-    <div id="analytics-modal" class="modal-overlay" onclick="closeModalIfOverlay(event, 'analytics-modal')">
-        <div class="modal-content analytics-modal-content">
-            <span class="modal-close" onclick="closeModal('analytics-modal')">&times;</span>
-            <h2>Painel de Análise de Riscos</h2>
-            <p class="analytics-subtitle">Insights automáticos baseados nos dados atuais do projeto.</p>
-            <div id="analytics-dashboard" class="analytics-dashboard">
-                </div>
-        </div>
-    </div>
     <script src="js/01-core-state.js"></script>
     <script src="js/02-app-init.js"></script>
     <script src="js/03-test-cases.js"></script>
@@ -471,6 +638,7 @@
     <script src="js/10-export-backup-gitlab.js"></script>
     <script src="js/11-supabase-sync.js"></script>
     <script src="js/12-dashboard.js"></script>
-    <script src="js/13-client-portal.js"></script>  
+    <script src="js/13-client-portal.js"></script>
+    <script src="js/14-app-shell.js"></script>
 </body>
 </html>

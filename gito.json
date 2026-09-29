@@ -9,14 +9,38 @@
     "responsavel": "Brayan Rodrigues",
     "equipe": ""
   },
-  "versao": "0.1.0",
-  "atualizadoEm": "2026-09-27",
+  "versao": "1.0.0-reforma-visual.1",
+  "atualizadoEm": "2026-09-28",
   "compilacao": {
-    "numero": 1,
-    "data": "2026-09-27",
+    "numero": 2,
+    "data": "2026-09-28",
     "artefato": ""
   },
   "historico": [
+    {
+      "versao": "1.0.0-reforma-visual.1",
+      "data": "2026-09-28",
+      "branch": "Reforma_visual",
+      "tipo": "quebra",
+      "resumo": "Visual refeito no padrão do Portal de Testes do Fluig, com as cores da Beyond, a nova marca Control e tela de carregamento.",
+      "itens": [
+        "Nova estrutura de tela igual à do Portal de Testes do Fluig: sidebar escura com grupos (Execução, Visão, Atendimento, Dados, Configurações), topbar com a run aberta e a contagem de casos e tickets, e navegação por abas.",
+        "Paleta Beyond (azul #3B6FF0 e neutros frios) e fonte Barlow; os 6 temas continuam (claro, escuro, sépia, terminal, oceano, roza).",
+        "Tela de carregamento com a logo nova (Control) sobre fundo azul-noite, e tela de login redesenhada.",
+        "Cards de caso de teste no padrão do Fluig: faixa e selo do status do fluxo, campos em grade (incluindo data de entrega, responsável, prioridade e peso), comentários, evidências e tags.",
+        "Planejamento virou aba, com faixa de KPIs e quadro por coluna igual ao do Fluig.",
+        "Quadro de tickets refeito: filtros, KPIs, kanban com arrastar e soltar e detalhe do ticket com evidências do problema e da resolução, comentários DEV/QA, linha do tempo de status e exclusão.",
+        "Dashboard refeito como o relatório do Fluig: resumo, KPIs, evolução por período, erros e fila de correção, falhas por tipo e tag, prazos, detalhamento ao clicar, escopo run atual ou nuvem e exportação (.xlsx, .html, PDF e e-mail para a coordenação).",
+        "A fila de chamados dos clientes virou a aba Chamados, no mesmo padrão do quadro de tickets, com KPIs e SLA.",
+        "Gerenciar acessos: a lista de usuários não fica mais presa em \"Carregando\"; a chamada tem prazo e mostra o motivo real do erro (CONTRO-0001).",
+        "Segurança: títulos e nomes digitados por clientes no Portal de Chamados passam a ser escapados antes de ir para a tela.",
+        "Correção: as evidências de resolução de ticket eram gravadas no mapa inteiro de tickets em vez de no ticket.",
+        "Removido o botão \"Copiar para Teams\" do card do caso (o módulo export-teams.js nunca existiu neste repositório)."
+      ],
+      "issues": [
+        "CONTRO-0001"
+      ]
+    },
     {
       "versao": "0.1.0",
       "data": "2026-09-27",
@@ -33,42 +57,51 @@
     "escopo": {
       "objetivo": "Centralizar a gestão de planos de teste de software (casos, execuções, evidências e tickets de erro) e oferecer um portal de chamados para clientes, com dados compartilhados na nuvem entre a equipe.",
       "inclui": [
-        "Cadastro, edição e exclusão de casos de teste, com resultado, tipo de teste, tipo de falha e tags",
+        "Cadastro, edição e exclusão de casos de teste, com resultado, tipo de teste, tipo de falha, tags e planejamento (data de entrega, responsável, prioridade e peso)",
         "Reteste vinculado ao caso original, com numeração hierárquica (ex.: 3.1, 3.2) e histórico de execução por caso",
-        "Evidências anexadas ao caso: gravação de tela (MediaRecorder / getDisplayMedia), capturas de imagem, logs do console colados ou capturados e fluxogramas em Mermaid",
-        "Geração de tickets de erro a partir de um caso reprovado, com comentários técnicos do desenvolvedor e acompanhamento de status",
-        "Roadmap e quadro Kanban dos casos, com gráficos de resultado e de tipos de falha (Chart.js)",
-        "Retrospectiva animada da execução e dashboard analítico multi-escopo (run atual ou runs da nuvem, com filtros por tipo, tag e período; caso com ticket aberto conta como reprovado)",
+        "Evidências anexadas ao caso: gravação de tela (MediaRecorder / getDisplayMedia), imagens, vídeos, logs do console e fluxogramas em Mermaid",
+        "Quadro de tickets de correção gerados a partir de casos reprovados: filtros, KPIs, kanban com arrastar e soltar, detalhe com evidências do problema e da resolução, comentários DEV/QA e linha do tempo de status",
+        "Planejamento do ciclo em quadro por coluna (backlog, em análise, corrigido, concluído) com KPIs de peso, atrasos e pendências",
+        "Dashboard de qualidade no formato de relatório: resumo, KPIs, evolução por dia/semana/mês, erros e fila de correção, falhas por tipo e tag, prazos, detalhamento ao clicar, escopo run atual ou runs da nuvem e exportação (.xlsx, .html, PDF e e-mail para a coordenação); caso com ticket aberto conta como reprovado",
+        "Roadmap, retrospectiva animada e análise de riscos da execução",
         "Login da equipe (Supabase Auth) e salvamento de runs na nuvem, organizadas em Projetos → Runs, com envio das mídias grandes para o Storage",
         "Salvamento local de projetos no navegador (localStorage), exportação e importação do plano em JSON e relatório textual para e-mail",
         "Portal de Chamados para clientes (estilo GLPI): abertura de chamado com evidências e gravação de tela, prioridades, status, categorias (módulos), SLA por projeto, comentários, anotações com tempo em vídeos, reabertura e notificação por e-mail",
-        "Área interna do portal: fila de chamados, administração de projetos, módulos e SLA, convite de clientes e gestão de papéis (interno / cliente) e acessos por projeto",
-        "Temas visuais (claro, escuro, sépia, terminal, oceano, roza)"
+        "Área interna do portal: aba Chamados (fila em kanban com KPIs e SLA), administração de projetos, módulos e SLA, convite de clientes e gestão de papéis (interno / cliente) e acessos por projeto",
+        "Interface no padrão visual do Portal de Testes do Fluig com a identidade Beyond (marca Control), tela de carregamento e 6 temas (claro, escuro, sépia, terminal, oceano, roza)"
       ],
       "naoInclui": [
         "Execução de testes automatizados (os testes são registrados manualmente)",
         "Integração com o GLPI corporativo: o portal de chamados é próprio e guarda os dados no Supabase",
         "Backend próprio: toda a lógica roda no navegador; o servidor é apenas o Supabase (banco, autenticação, arquivos e Edge Functions)",
         "Sincronização automática dos projetos salvos em localStorage: eles ficam só no navegador de quem salvou, até serem enviados para a nuvem",
-        "Exportação de ticket para o Microsoft Teams: o botão existe, mas o módulo export-teams.js é apenas um stub neste repositório"
+        "Exportação de ticket para o Microsoft Teams (o botão foi removido; o módulo export-teams.js nunca existiu neste repositório)",
+        "Link que reabre o dashboard com os filtros aplicados: para compartilhar, use Baixar .html ou Imprimir / PDF"
       ]
     },
     "stack": [
       "HTML5, CSS3 e JavaScript (ES6+) puro, sem framework e sem etapa de build",
-      "Chart.js (via CDN jsDelivr, sem versão fixada): gráficos do roadmap, dashboard e portal",
+      "Design system css/control.css: cópia do testes.css do Portal de Testes (widget Fluig portalTestes), classes BEM testes-*, com a paleta Beyond; camada da aplicação em css/beyond.css e complementos em css/dashboard.css e css/tickets.css; o style.css legado continua servindo os modais antigos",
+      "Fonte Barlow (Google Fonts)",
+      "Chart.js 4.4.1 (via CDN jsDelivr): gráficos do roadmap e do portal do cliente",
       "@supabase/supabase-js v2 (via CDN jsDelivr): Auth, banco, Storage e chamada de Edge Functions",
       "Mermaid 10 (via CDN jsDelivr): fluxogramas anexados aos casos e diagramas do roadmap",
+      "ExcelJS 4.4.0 (via CDN jsDelivr, carregado só ao exportar o analítico do dashboard em .xlsx)",
       "Mammoth 1.7.0 (via CDN cdnjs): carregada no index.html, usada apenas pelo código legado (importação de .docx)",
-      "Web APIs do navegador: MediaDevices.getDisplayMedia, MediaRecorder, Clipboard, FileReader e localStorage",
+      "Web APIs do navegador: MediaDevices.getDisplayMedia, MediaRecorder, Clipboard, FileReader, ResizeObserver e localStorage",
       "Supabase: PostgreSQL com RLS, Supabase Auth (e-mail e senha), Supabase Storage e Edge Functions",
       "GitHub Pages: hospedagem estática publicada a partir da branch main do repositório GitHub"
     ],
     "arquitetura": {
-      "resumo": "SPA estática hospedada no GitHub Pages (index.html + style.css) que carrega, em ordem, 13 módulos JavaScript da pasta js/ (01-core-state a 13-client-portal) compartilhando estado global no window; não há build nem servidor de aplicação. O estado da run (testCaseData, ticketData e contadores) fica em memória e é persistido de três formas: (1) localStorage do navegador, para projetos locais e preferências; (2) arquivo JSON exportado/importado pelo usuário; (3) Supabase, onde cada run é gravada na tabela public.cloud_runs com o estado completo em jsonb e o nome do projeto em project_name. Evidências em data-URI acima de 300 KB (vídeos e imagens grandes) vão para o bucket privado 'evidencias' do Supabase Storage, na pasta do próprio usuário (uid/...), e são lidas por URL assinada válida por 7 dias; imagens pequenas ficam em Base64 dentro do jsonb. O login usa Supabase Auth, e o RLS garante que a equipe logada lê todas as runs, mas só o dono cria, altera ou exclui as suas. O Portal de Chamados (js/13-client-portal.js) define o papel do usuário pela tabela profiles (interno ou cliente) e usa as tabelas support_projects, support_modules, sla_policies, client_project_access, support_tickets, support_ticket_comments e support_ticket_evidence_notes, as funções RPC reopen_ticket e seed_default_sla e as Edge Functions notify-ticket (e-mail de notificação) e portal-admin (convite e gestão de usuários). A URL do projeto Supabase e a chave publishable (pública por design) ficam fixas em js/11-supabase-sync.js; a service_role nunca vai para o front-end. Atenção: o script de schema do portal (sql/13-portal-cliente.sql) e o código das Edge Functions não estão versionados neste repositório; só sql/supabase-setup.sql e sql/supabase-update-v2.sql estão. Legado, fora do fluxo atual: script.js na raiz e a pasta BACKUP/ (versão monolítica antiga, não carregada pelo index.html) e a publicação de backups JSON via API do GitLab (js/10-export-backup-gitlab.js). A pasta backups/ do repositório continua sendo servida pelo GitHub Pages, e o modal de backups do repositório lê backups/index.json do próprio site.",
+      "resumo": "SPA estática hospedada no GitHub Pages. O index.html monta a casca no padrão do Portal de Testes do Fluig (tela de carregamento, sidebar com grupos, topbar e abas Casos, Planejamento, Tickets, Dashboard e Chamados) e carrega, em ordem, 14 módulos JavaScript da pasta js/ (01-core-state a 14-app-shell) que compartilham estado global no window; não há build nem servidor de aplicação. O js/14-app-shell.js cuida da navegação entre abas, das ações da sidebar (roadmap, retrospectiva, riscos, nuvem, backup, painel), da topbar, do tema e do ciclo da tela de carregamento; os demais módulos renderizam dentro das abas (06 tickets, 07 planejamento, 12 dashboard, 13 portal e chamados). Visual: css/control.css é o design system do portal Fluig com a paleta Beyond; css/beyond.css tem layout, marca (img/logo-control*.png, gerada a partir de nova_logo.png.png), login e a ponte com o style.css legado, que continua servindo os modais antigos. O dashboard desenha o relatório num iframe (srcdoc) com gráficos em SVG e cores lidas dos tokens do tema. O estado da run (testCaseData, ticketData e contadores) fica em memória e é persistido de três formas: (1) localStorage do navegador, para projetos locais e preferências; (2) arquivo JSON exportado/importado pelo usuário; (3) Supabase, onde cada run é gravada na tabela public.cloud_runs com o estado completo em jsonb e o nome do projeto em project_name. Evidências em data-URI acima de 300 KB (vídeos e imagens grandes) vão para o bucket privado evidencias do Supabase Storage, na pasta do próprio usuário (uid/...), e são lidas por URL assinada válida por 7 dias; imagens pequenas ficam em Base64 dentro do jsonb. O login usa Supabase Auth, e o RLS garante que a equipe logada lê todas as runs, mas só o dono cria, altera ou exclui as suas. O Portal de Chamados (js/13-client-portal.js) define o papel do usuário pela tabela profiles (interno ou cliente) e usa as tabelas support_projects, support_modules, sla_policies, client_project_access, support_tickets, support_ticket_comments e support_ticket_evidence_notes, as funções RPC reopen_ticket e seed_default_sla e as Edge Functions notify-ticket (e-mail de notificação) e portal-admin (convite e gestão de usuários, chamada com prazo de 20 s). A URL do projeto Supabase e a chave publishable (pública por design) ficam fixas em js/11-supabase-sync.js; a service_role nunca vai para o front-end. Atenção: o script de schema do portal (sql/13-portal-cliente.sql) e o código das Edge Functions não estão versionados neste repositório; só sql/supabase-setup.sql e sql/supabase-update-v2.sql estão. Legado, fora do fluxo atual: script.js na raiz e a pasta BACKUP/ (versão monolítica antiga, não carregada pelo index.html) e a publicação de backups JSON via API do GitLab (js/10-export-backup-gitlab.js). A pasta backups/ do repositório continua sendo servida pelo GitHub Pages, e o modal de backups do repositório lê backups/index.json do próprio site.",
       "diagramas": [
         {
           "titulo": "Visão geral da arquitetura",
-          "mermaid": "flowchart LR\n  U[Equipe QA / Dev] --> APP\n  C[Cliente] --> APP\n  subgraph Navegador\n    APP[SPA estática<br/>index.html + js/01..13]\n    LS[(localStorage<br/>projetos locais e preferências)]\n    APP <--> LS\n  end\n  CDN[CDNs jsDelivr / cdnjs<br/>Chart.js, supabase-js, Mermaid, Mammoth] --> APP\n  PAGES[GitHub Pages<br/>hospedagem estática] -. entrega os arquivos .-> APP\n  subgraph Supabase\n    AUTH[Auth<br/>e-mail e senha]\n    DB[(PostgreSQL + RLS<br/>cloud_runs, profiles, support_*)]\n    ST[(Storage<br/>bucket privado evidencias)]\n    EF[Edge Functions<br/>notify-ticket, portal-admin]\n  end\n  APP -->|login| AUTH\n  APP -->|runs e chamados| DB\n  APP -->|mídias acima de 300 KB<br/>URL assinada 7 dias| ST\n  APP -->|notificação e administração| EF\n  EF --> DB\n  EF -->|e-mail| MAIL[Destinatários do chamado]\n  APP -. legado .-> GL[API GitLab<br/>backups JSON]"
+          "mermaid": "flowchart LR\n  U[Equipe QA / Dev] --> APP\n  C[Cliente] --> APP\n  subgraph Navegador\n    APP[SPA estática<br/>index.html + js/01..14<br/>css/control.css + beyond.css]\n    LS[(localStorage<br/>projetos locais e preferências)]\n    APP <--> LS\n  end\n  CDN[CDNs jsDelivr / cdnjs / Google Fonts<br/>Chart.js, supabase-js, Mermaid, ExcelJS, Mammoth, Barlow] --> APP\n  PAGES[GitHub Pages<br/>hospedagem estática] -. entrega os arquivos .-> APP\n  subgraph Supabase\n    AUTH[Auth<br/>e-mail e senha]\n    DB[(PostgreSQL + RLS<br/>cloud_runs, profiles, support_*)]\n    ST[(Storage<br/>bucket privado evidencias)]\n    EF[Edge Functions<br/>notify-ticket, portal-admin]\n  end\n  APP -->|login| AUTH\n  APP -->|runs e chamados| DB\n  APP -->|mídias acima de 300 KB<br/>URL assinada 7 dias| ST\n  APP -->|notificação e administração| EF\n  EF --> DB\n  EF -->|e-mail| MAIL[Destinatários do chamado]\n  APP -. legado .-> GL[API GitLab<br/>backups JSON]"
+        },
+        {
+          "titulo": "Casca da aplicação (abas e módulos)",
+          "mermaid": "flowchart TB\n  SPL[Tela de carregamento<br/>img/logo-control-contorno.png] --> LOGIN{Sessão?}\n  LOGIN -- não --> TL[Tela de login<br/>js/11]\n  LOGIN -- sim --> PAPEL{Papel<br/>profiles.role}\n  TL --> PAPEL\n  PAPEL -- cliente --> PC[Portal de Chamados<br/>js/13]\n  PAPEL -- interno ou offline --> SHELL[Casca js/14<br/>sidebar + topbar]\n  SHELL --> A1[Casos de teste<br/>js/03 04 05 08]\n  SHELL --> A2[Planejamento<br/>js/07]\n  SHELL --> A3[Tickets<br/>js/06]\n  SHELL --> A4[Dashboard<br/>js/12]\n  SHELL --> A5[Chamados<br/>js/13]\n  SHELL -. modais .-> M[Roadmap, retrospectiva,<br/>riscos, nuvem, backup, painel]"
         },
         {
           "titulo": "Salvamento de uma run na nuvem",
@@ -117,23 +150,18 @@
       },
       {
         "nome": "Supabase Edge Function portal-admin",
-        "descricao": "Operações administrativas do portal: convite de clientes, papéis, acessos por projeto e exclusão de usuários.",
+        "descricao": "Operações administrativas do portal: listar usuários, convidar clientes, papéis, acessos por projeto e exclusão de usuários. O front-end chama com prazo de 20 s e mostra o motivo real do erro.",
         "url": "https://wilxxkkqgoigmrdgufej.supabase.co/functions/v1/portal-admin"
       },
       {
-        "nome": "CDNs de bibliotecas (jsDelivr e cdnjs)",
-        "descricao": "Chart.js, supabase-js, Mermaid e Mammoth são carregadas em tempo de execução; sem internet a aplicação não funciona.",
+        "nome": "CDNs de bibliotecas e fontes (jsDelivr, cdnjs e Google Fonts)",
+        "descricao": "Chart.js, supabase-js, Mermaid, Mammoth, ExcelJS (sob demanda) e a fonte Barlow são carregados em tempo de execução; sem internet a aplicação não funciona.",
         "url": "https://cdn.jsdelivr.net"
       },
       {
         "nome": "API do GitLab (legado)",
         "descricao": "Publicação e listagem de backups JSON em backups/ de um repositório GitLab, configurada por usuário no navegador. Substituída pelo salvamento no Supabase.",
         "url": "https://gitlab.com/api/v4"
-      },
-      {
-        "nome": "Microsoft Teams (incompleto)",
-        "descricao": "Botão 'Copiar para Teams' nos tickets depende do módulo export-teams.js, que neste repositório é apenas um stub.",
-        "url": ""
       }
     ],
     "links": [

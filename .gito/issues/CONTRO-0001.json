@@ -4,20 +4,51 @@
   "descricao": "Deposi que migramos a hospedagem da vercel para o github não funciona mais, a janela abre e simplismente não carrega os usuários para que eu faça a gerencia.",
   "tipo": "bug",
   "prioridade": "alta",
-  "status": "aberta",
+  "status": "em-revisao",
   "responsavel": "Brayan Rodrigues",
   "prazo": "2026-09-28",
   "versaoAlvo": "0.1.0",
   "criadaEm": "2026-09-27T05:28:22.801Z",
   "criadaPor": "Brayan Rodrigues <brayan.rodrigues@delp.com.br>",
-  "atualizadaEm": "2026-09-27T05:28:22.801Z",
-  "comentarios": [],
+  "atualizadaEm": "2026-09-29T00:03:05.000Z",
+  "comentarios": [
+    {
+      "quando": "2026-09-28T23:52:42.000Z",
+      "autor": "Brayan Rodrigues (via Claude)",
+      "texto": "Iniciando a análise. Vou verificar CORS da Edge Function portal-admin a partir do novo domínio (GitHub Pages), o que muda entre Vercel e GitHub Pages no front-end e deixar o modal de Gerenciar acessos com erro real e prazo de resposta, para não ficar preso em \"Carregando usuários...\"."
+    },
+    {
+      "quando": "2026-09-29T00:03:05.000Z",
+      "autor": "Brayan Rodrigues (via Claude)",
+      "texto": "Correção na versão 1.0.0-reforma-visual.1 (branch Reforma_visual). Diagnóstico: o CORS da Edge Function portal-admin já libera qualquer origem (Access-Control-Allow-Origin: *), então a troca de domínio Vercel -> GitHub Pages não bloqueia a chamada. O código da função não está no repositório e não foi possível reproduzir com uma sessão real, por isso a causa raiz no servidor não foi confirmada. O que mudou no front-end (js/13-client-portal.js): (1) a chamada à portal-admin tem prazo de 20 s, e o modal não fica mais preso em \"Carregando usuários...\"; (2) o erro mostra o motivo real que a função devolve (ex.: \"HTTP 401 - Invalid JWT\") em vez do genérico \"non-2xx\", com botão \"Tentar de novo\"; (3) a sessão é conferida antes da chamada; (4) resposta sem lista de usuários ou cliente sem \"projects\" não quebra mais a tela. Como validar em produção: abrir Atendimento > Gerenciar acessos. Se ainda falhar, a mensagem agora indica a causa; confira os logs da função portal-admin no painel do Supabase (Edge Functions > Logs). Suspeita principal se aparecer 401: a função está com verificação de JWT e o projeto migrou para as novas chaves (publishable / JWT signing keys)."
+    }
+  ],
   "evidencias": [],
   "historico": [
     {
       "quando": "2026-09-27T05:28:22.801Z",
       "autor": "Brayan Rodrigues <brayan.rodrigues@delp.com.br>",
       "mudanca": "issue criada"
+    },
+    {
+      "quando": "2026-09-28T14:42:48.320Z",
+      "autor": "Brayan Rodrigues <brayan.rodrigues@delp.com.br>",
+      "mudanca": "situação: aberta → em-andamento"
+    },
+    {
+      "quando": "2026-09-28T14:42:49.863Z",
+      "autor": "Brayan Rodrigues <brayan.rodrigues@delp.com.br>",
+      "mudanca": "situação: em-andamento → aberta"
+    },
+    {
+      "quando": "2026-09-28T23:52:42.000Z",
+      "autor": "Brayan Rodrigues (via Claude)",
+      "mudanca": "situação: aberta → em-andamento"
+    },
+    {
+      "quando": "2026-09-29T00:03:05.000Z",
+      "autor": "Brayan Rodrigues (via Claude)",
+      "mudanca": "situação: em-andamento → em-revisao"
     }
   ]
 }
