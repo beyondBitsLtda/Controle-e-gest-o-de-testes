@@ -10,7 +10,7 @@
   "versaoAlvo": "0.1.0",
   "criadaEm": "2026-09-27T05:28:22.801Z",
   "criadaPor": "Brayan Rodrigues <brayan.rodrigues@delp.com.br>",
-  "atualizadaEm": "2026-09-29T00:03:05.000Z",
+  "atualizadaEm": "2026-09-29T00:36:54.000Z",
   "comentarios": [
     {
       "quando": "2026-09-28T23:52:42.000Z",
@@ -21,6 +21,11 @@
       "quando": "2026-09-29T00:03:05.000Z",
       "autor": "Brayan Rodrigues (via Claude)",
       "texto": "Correção na versão 1.0.0-reforma-visual.1 (branch Reforma_visual). Diagnóstico: o CORS da Edge Function portal-admin já libera qualquer origem (Access-Control-Allow-Origin: *), então a troca de domínio Vercel -> GitHub Pages não bloqueia a chamada. O código da função não está no repositório e não foi possível reproduzir com uma sessão real, por isso a causa raiz no servidor não foi confirmada. O que mudou no front-end (js/13-client-portal.js): (1) a chamada à portal-admin tem prazo de 20 s, e o modal não fica mais preso em \"Carregando usuários...\"; (2) o erro mostra o motivo real que a função devolve (ex.: \"HTTP 401 - Invalid JWT\") em vez do genérico \"non-2xx\", com botão \"Tentar de novo\"; (3) a sessão é conferida antes da chamada; (4) resposta sem lista de usuários ou cliente sem \"projects\" não quebra mais a tela. Como validar em produção: abrir Atendimento > Gerenciar acessos. Se ainda falhar, a mensagem agora indica a causa; confira os logs da função portal-admin no painel do Supabase (Edge Functions > Logs). Suspeita principal se aparecer 401: a função está com verificação de JWT e o projeto migrou para as novas chaves (publishable / JWT signing keys)."
+    },
+    {
+      "quando": "2026-09-29T00:36:54.000Z",
+      "autor": "Brayan Rodrigues (via Claude)",
+      "texto": "Nova correção na versão 1.0.0-reforma-visual.2. Com o prazo e o erro visível, ficou claro o sintoma real: a Edge Function portal-admin responde sem erro, mas devolve a lista vazia (\"0 usuário(s)\"). Em vez de depender da função (cujo código não está no repositório), a gestão de acessos foi refeita no padrão do Portal de Testes do Fluig, na nova aba Parâmetros > Usuários e acessos: a lista vem direto do banco (função list_app_users), o cadastro cria a conta pelo próprio Supabase Auth sem derrubar a sessão do administrador, e papel (ADMIN, QA, DEV, GESTOR, CLIENTE), situação e projetos com acesso (com \"vê todos\" para cliente supervisor) são gravados em profiles e client_project_access, protegidos por RLS. Pré-requisito: rodar sql/supabase-update-v3-acessos.sql no SQL Editor do Supabase. Como validar: entrar como ADMIN, abrir Parâmetros > Usuários e acessos, conferir a lista, cadastrar um cliente de teste com um projeto e entrar com ele."
     }
   ],
   "evidencias": [],
@@ -49,6 +54,11 @@
       "quando": "2026-09-29T00:03:05.000Z",
       "autor": "Brayan Rodrigues (via Claude)",
       "mudanca": "situação: em-andamento → em-revisao"
+    },
+    {
+      "quando": "2026-09-29T00:36:54.000Z",
+      "autor": "Brayan Rodrigues (via Claude)",
+      "mudanca": "comentário: gestão de acessos refeita sem a Edge Function (versão 1.0.0-reforma-visual.2)"
     }
   ]
 }

@@ -91,8 +91,9 @@ async function sbSignUp() {
     sbLoginStatus('info', 'Criando conta...');
     const { data, error } = await client.auth.signUp({ email, password });
     if (error) { sbLoginStatus('error', 'Erro no cadastro: ' + error.message); return; }
+    // A conta nasce PENDENTE: um ADMIN define o papel em Parâmetros > Usuários.
     if (data.session) { sbSession = data.session; sbEnterApp(); }
-    else sbLoginStatus('warn', 'Conta criada! Confirme pelo link enviado ao seu e-mail e depois clique em Entrar.');
+    else sbLoginStatus('warn', 'Conta criada! Confirme pelo link enviado ao seu e-mail. Depois, um administrador libera o seu acesso.');
 }
 
 async function sbSignOut() {
@@ -185,7 +186,7 @@ function sbUpdateUserChip() {
     if (!chip) return;
     if (sbSession && sbSession.user) {
         const nome = (typeof portalMyName !== 'undefined' && portalMyName) || sbSession.user.email;
-        const papel = typeof portalRole !== 'undefined' && portalRole === 'interno' ? 'COLABORADOR' : 'CONECTADO';
+        const papel = typeof appPapel !== 'undefined' && appPapel !== 'LOCAL' ? appPapel : 'CONECTADO';
         chip.innerHTML = `<span class="testes-sidebar__usuario-nome" title="${sbSession.user.email}">${nome}</span>
             <span class="testes-sidebar__usuario-linha">
               <span class="testes-sidebar__usuario-papel">${papel}</span>
@@ -325,13 +326,13 @@ async function sbListRuns() {
     const session = await sbGetSession(); if (!session) return;
     const container = document.getElementById('sb-runs-list');
     if (!container) return;
-    container.innerHTML = '<em>Carregando...</em>';
+    container.innerHTML = '<div class="testes-placeholder"><span class="testes-placeholder__txt">Carregando...</span></div>';
 
     const { data, error } = await client.from('cloud_runs')
         .select('id, project_name, run_name, author, status, media_count, updated_at, user_id')
         .order('updated_at', { ascending: false });
-    if (error) { container.innerHTML = '<span style="color:#c0392b;">Erro: ' + error.message + '</span>'; return; }
-    if (!data || data.length === 0) { container.innerHTML = '<em>Nenhuma run salva na nuvem ainda.</em>'; return; }
+    if (error) { container.innerHTML = `<div class="testes-placeholder"><span class="testes-placeholder__txt">Erro: ${sbEsc(error.message)}</span></div>`; return; }
+    if (!data || data.length === 0) { container.innerHTML = '<div class="testes-placeholder"><span class="testes-placeholder__txt">Nenhuma run salva na nuvem ainda.</span></div>'; return; }
 
     // Agrupa por projeto
     const groups = {};
@@ -349,38 +350,46 @@ async function sbListRuns() {
     Object.keys(groups).sort().forEach(projectName => {
         const runs = groups[projectName];
         const isOpen = !!sbExpandedProjects[projectName];
-        const safeKey = btoa(unescape(encodeURIComponent(projectName)));
 
-        const header = document.createElement('div');
-        header.style.cssText = 'display:flex; align-items:center; justify-content:space-between; padding:10px 12px; background:#eef2fb; border:1px solid #ccd6ee; border-radius:8px; margin-bottom:4px; cursor:pointer; user-select:none;';
+        const box = document.createElement('div');
+        box.className = 'sb-proj' + (isOpen ? ' sb-proj--aberto' : '');
+        const header = document.createElement('button');
+        header.type = 'button';
+        header.className = 'sb-proj__cab';
         header.innerHTML = `
-            <strong>${projectName} <span style="font-weight:normal; color:#666; font-size:0.85em;">(${runs.length} run${runs.length > 1 ? 's' : ''})</span></strong>
-            <span>${isOpen ? '▾' : '▸'}</span>`;
+            <span class="sb-proj__nome">${sbEsc(projectName)}</span>
+            <span class="testes-badge testes-badge--cinza">${runs.length} run${runs.length > 1 ? 's' : ''}</span>
+            <span class="sb-proj__seta" aria-hidden="true">${isOpen ? '▾' : '▸'}</span>`;
         header.onclick = () => { sbExpandedProjects[projectName] = !isOpen; sbListRuns(); };
-        container.appendChild(header);
+        box.appendChild(header);
 
         if (isOpen) {
             const runsBox = document.createElement('div');
-            runsBox.style.cssText = 'margin:0 0 8px 14px;';
+            runsBox.className = 'sb-proj__runs';
             runs.forEach(run => {
                 const isMine = run.user_id === session.user.id;
                 const when = new Date(run.updated_at).toLocaleString('pt-BR');
                 const item = document.createElement('div');
-                item.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:8px; padding:7px 10px; border:1px solid #e0e0e0; border-radius:8px; margin-bottom:4px; background:#fafafa;';
+                item.className = 'sb-run';
                 item.innerHTML = `
-                    <div style="min-width:0;">
-                        <span style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">▶${run.run_name}</span>
-                        <small style="color:#777;">${run.author || ''} · ${when} · ${run.media_count || 0} mídia(s)</small>
+                    <div class="sb-run__info">
+                        <span class="sb-run__nome">${sbEsc(run.run_name)}</span>
+                        <span class="sb-run__meta">${sbEsc(run.author || '')} · ${when} · ${run.media_count || 0} mídia(s)</span>
                     </div>
-                    <div style="display:flex; gap:6px; flex-shrink:0;">
-                        <button class="btn" style="padding:4px 10px; font-size:0.85em; background-color:#3b6ff0;" onclick="sbLoadCloudRun('${run.id}')">Carregar</button>
-                        ${isMine ? `<button class="btn" style="padding:4px 10px; font-size:0.85em; background-color:#c0392b;" onclick="sbDeleteCloudRun('${run.id}', '${run.run_name.replace(/'/g, "\\'")}')">Excluir</button>` : ''}
+                    <div class="sb-run__acoes">
+                        <button type="button" class="testes-btn testes-btn--primary testes-btn--mini" onclick="sbLoadCloudRun('${run.id}')">Carregar</button>
+                        ${isMine ? `<button type="button" class="testes-btn testes-btn--perigo-fantasma testes-btn--mini" onclick="sbDeleteCloudRun('${run.id}', '${sbEsc(run.run_name).replace(/'/g, "\\'")}')">Excluir</button>` : ''}
                     </div>`;
                 runsBox.appendChild(item);
             });
-            container.appendChild(runsBox);
+            box.appendChild(runsBox);
         }
+        container.appendChild(box);
     });
+}
+
+function sbEsc(v) {
+    return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 async function sbLoadCloudRun(runId) {
@@ -446,8 +455,7 @@ async function sbDeleteCloudRun(runId, runName) {
 function sbSetStatus(kind, msg) {
     const el = document.getElementById('sb-status');
     if (!el) { console.log('[Supabase]', msg); return; }
-    const colors = { ok: '#1e8e3e', error: '#c0392b', warn: '#e6a800', info: '#3b6ff0' };
-    el.style.color = colors[kind] || '#333';
+    el.className = 'sb-status' + (kind ? ` sb-status--${kind}` : '');
     el.textContent = msg;
 }
 
@@ -457,13 +465,13 @@ async function sbOpenModal() {
     const modal = document.getElementById('supabase-modal');
     if (!modal) return;
     document.getElementById('sb-cloud-user').textContent = session.user.email;
-    modal.style.display = 'flex';
+    modal.classList.add('testes-modal--aberto');
     sbListRuns();
 }
 
 function sbCloseModal() {
     const modal = document.getElementById('supabase-modal');
-    if (modal) modal.style.display = 'none';
+    if (modal) modal.classList.remove('testes-modal--aberto');
 }
 
 function sbInjectUI() {
@@ -471,36 +479,45 @@ function sbInjectUI() {
     if (document.getElementById('supabase-modal')) return;
     const modal = document.createElement('div');
     modal.id = 'supabase-modal';
-    modal.className = 'modal-overlay';
-    modal.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; align-items:center; justify-content:center;';
-    modal.onclick = (e) => { if (e.target.id === 'supabase-modal') sbCloseModal(); };
+    modal.className = 'testes-modal testes-modal--md';
+    modal.setAttribute('role', 'dialog');
     modal.innerHTML = `
-      <div style="background:#fff; border-radius:12px; width:min(640px, 94vw); max-height:88vh; overflow-y:auto; padding:22px; box-shadow:0 10px 40px rgba(0,0,0,0.25);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-            <h2 style="margin:0; font-size:1.2em;">Projetos e Runs na Nuvem</h2>
-            <button onclick="sbCloseModal()" style="border:none; background:none; font-size:1.5em; cursor:pointer;">&times;</button>
-        </div>
-        <p style="margin:0 0 8px; font-size:0.85em; color:#777;">Conectado como <strong id="sb-cloud-user"></strong></p>
-        <div id="sb-status" style="min-height:20px; font-size:0.9em; margin-bottom:10px;"></div>
+      <div class="testes-modal__backdrop" onclick="sbCloseModal()"></div>
+      <div class="testes-modal__dialog">
+        <header class="testes-modal__header">
+            <h3 class="testes-modal__title">Projetos e runs na nuvem</h3>
+            <button type="button" class="testes-modal__close" aria-label="Fechar" onclick="sbCloseModal()">&times;</button>
+        </header>
+        <div class="testes-modal__body">
+            <p class="testes-texto-apoio">Conectado como <strong id="sb-cloud-user"></strong></p>
+            <div id="sb-status" class="sb-status"></div>
 
-        <div style="padding:12px; border:1px solid #d9e2f5; background:#f5f8ff; border-radius:10px; margin-bottom:16px;">
-            <h3 style="margin:0 0 8px; font-size:1em;">Salvar run atual</h3>
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <input type="text" id="sb-project-name" class="form-input" list="sb-project-datalist"
-                       placeholder="Projeto (ex: Fluxo de Caixa)" style="flex:1; min-width:160px;">
-                <datalist id="sb-project-datalist"></datalist>
-                <input type="text" id="sb-run-name" class="form-input"
-                       placeholder="Nome da run (ex: Sprint 22 - Regressão)" style="flex:1.4; min-width:180px;">
-                <button class="btn" style="background-color:#3ecf8e;" onclick="sbSaveRunToCloud()">Salvar</button>
+            <h4 class="testes-form__secao">Salvar run atual</h4>
+            <div class="testes-form__linha">
+                <div class="testes-campo">
+                    <label class="testes-campo__label" for="sb-project-name">Projeto</label>
+                    <input type="text" id="sb-project-name" class="testes-input" list="sb-project-datalist" placeholder="Ex.: Fluxo de Caixa">
+                    <datalist id="sb-project-datalist"></datalist>
+                </div>
+                <div class="testes-campo">
+                    <label class="testes-campo__label" for="sb-run-name">Nome da run</label>
+                    <input type="text" id="sb-run-name" class="testes-input" placeholder="Ex.: Sprint 22 - Regressão">
+                </div>
             </div>
-            <small style="color:#666;">Escolha um projeto existente na lista ou digite um novo nome para criá-lo. Salvar com o mesmo projeto + run sobrescreve.</small>
-        </div>
+            <div class="sb-salvar">
+                <span class="testes-campo__ajuda">Escolha um projeto da lista ou digite um nome novo para criá-lo. Salvar com o mesmo projeto e run sobrescreve.</span>
+                <button type="button" class="testes-btn testes-btn--primary" onclick="sbSaveRunToCloud()">Salvar na nuvem</button>
+            </div>
 
-        <h3 style="margin:0 0 8px; font-size:1em;">Projetos</h3>
-        <div id="sb-runs-list"><em>Carregando...</em></div>
-        <button class="btn" style="background-color:#3b6ff0; padding:5px 12px; font-size:0.85em; margin-top:8px;" onclick="sbListRuns()">Atualizar</button>
+            <h4 class="testes-form__secao">Projetos</h4>
+            <div id="sb-runs-list"></div>
+        </div>
+        <footer class="testes-modal__footer">
+            <button type="button" class="testes-btn testes-btn--ghost" onclick="sbListRuns()">Atualizar</button>
+            <button type="button" class="testes-btn testes-btn--ghost" onclick="sbCloseModal()">Fechar</button>
+        </footer>
       </div>`;
-    document.body.appendChild(modal);
+    (document.querySelector('.testes-legado') || document.body).appendChild(modal);
 }
 
 // --- INICIALIZAÇÃO ----------------------------------------------------

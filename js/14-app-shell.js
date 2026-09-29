@@ -12,7 +12,8 @@ const APP_TABS = {
     planejamento: { crumb: 'Execução', titulo: 'Planejamento do ciclo' },
     tickets:      { crumb: 'Execução', titulo: 'Tickets de correção' },
     dashboard:    { crumb: 'Visão',    titulo: 'Dashboard de qualidade' },
-    chamados:     { crumb: 'Atendimento', titulo: 'Chamados de clientes' }
+    chamados:     { crumb: 'Atendimento', titulo: 'Chamados de clientes' },
+    parametros:   { crumb: 'Configurações', titulo: 'Parâmetros e permissões' }
 };
 let appCurrentTab = 'casos';
 
@@ -21,8 +22,6 @@ const APP_ACOES = {
     'roadmap':         () => generateTestRoadmap(),
     'retrospectiva':   () => showRetrospective(),
     'riscos':          () => showAnalyticsPanel(),
-    'admin-portal':    () => portalOpenAdmin(),
-    'acessos':         () => portalOpenAccessMgmt(),
     'nuvem':           () => sbOpenModal(),
     'relatorio':       () => exportForEmail(),
     'exportar-backup': () => exportCurrentStateToJSON(),
@@ -32,6 +31,8 @@ const APP_ACOES = {
 
 function appShowTab(tab) {
     if (!APP_TABS[tab]) tab = 'casos';
+    // Aba sem permissão para o papel atual (js/15-permissoes.js) não abre.
+    if (typeof permPodeVer === 'function' && !permPodeVer(PERM_MODULO_DA_ABA[tab])) return;
     appCurrentTab = tab;
     document.querySelectorAll('[data-app-secao]').forEach(sec =>
         sec.classList.toggle('testes-tab--ativa', sec.dataset.appSecao === tab));
@@ -47,6 +48,7 @@ function appShowTab(tab) {
     else if (tab === 'tickets') showTicketManagementView();
     else if (tab === 'dashboard') dbOpenDashboard();
     else if (tab === 'chamados') portalOpenInternalQueue();
+    else if (tab === 'parametros') parOpenParametros();
     appUpdateTopbar();
 }
 

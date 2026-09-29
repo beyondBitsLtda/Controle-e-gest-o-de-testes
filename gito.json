@@ -9,14 +9,37 @@
     "responsavel": "Brayan Rodrigues",
     "equipe": ""
   },
-  "versao": "1.0.0-reforma-visual.1",
+  "versao": "1.0.0-reforma-visual.2",
   "atualizadoEm": "2026-09-28",
   "compilacao": {
-    "numero": 2,
+    "numero": 3,
     "data": "2026-09-28",
     "artefato": ""
   },
   "historico": [
+    {
+      "versao": "1.0.0-reforma-visual.2",
+      "data": "2026-09-28",
+      "branch": "Reforma_visual",
+      "tipo": "funcionalidade",
+      "resumo": "Controle de acesso e cadastro de usuários no padrão do Portal de Testes do Fluig, com papéis e projetos com acesso, e modais legíveis nos temas escuros.",
+      "itens": [
+        "Nova aba Parâmetros (só ADMIN) com as subabas do Fluig: Usuários e acessos, Projetos e módulos, Políticas de SLA, Minhas preferências e Quadro de permissões.",
+        "Cadastro de usuário cria a conta (e-mail e senha) e define papel (ADMIN, QA, DEV, GESTOR ou CLIENTE), substituto e projetos com acesso; editar, inativar, reativar e enviar e-mail de redefinição de senha.",
+        "Clientes: por projeto, o administrador libera a abertura de chamados e, opcionalmente, \"vê todos\" (supervisor vê os chamados dos outros solicitantes do projeto).",
+        "Matriz papel x módulo igual à do Fluig aplicada na tela: menus e ações somem conforme o papel e casos/tickets ficam somente leitura para quem só visualiza.",
+        "Quem se cadastra sozinho na tela de login fica PENDENTE e não vê nada até um administrador liberar; usuário inativado não entra mais.",
+        "Banco (sql/supabase-update-v3-acessos.sql): papel, e-mail, substituto e ativo em profiles; só o ADMIN altera papel e acessos (antes qualquer usuário podia trocar o próprio papel pela API); runs de teste deixam de ser visíveis para clientes; projetos, módulos e SLA com escrita só do ADMIN.",
+        "A lista de usuários não depende mais da Edge Function portal-admin, que devolvia a lista vazia (CONTRO-0001).",
+        "Removidos os modais antigos \"Gerenciar portal\" e \"Gerenciar acessos\" (substituídos pela aba Parâmetros).",
+        "Modais legíveis nos temas escuros: \"Projetos e runs na nuvem\" refeito no padrão do design system e cores fixas do Portal de Chamados trocadas por cores do tema.",
+        "Correções: detalhe do card no Planejamento voltou a abrir; botão Fluxograma do card não quebra mais; nome do usuário logado passa a ser usado nos comentários.",
+        "sql/13-portal-cliente.sql recuperado do histórico do git e versionado de novo."
+      ],
+      "issues": [
+        "CONTRO-0001"
+      ]
+    },
     {
       "versao": "1.0.0-reforma-visual.1",
       "data": "2026-09-28",
@@ -67,8 +90,9 @@
         "Login da equipe (Supabase Auth) e salvamento de runs na nuvem, organizadas em Projetos → Runs, com envio das mídias grandes para o Storage",
         "Salvamento local de projetos no navegador (localStorage), exportação e importação do plano em JSON e relatório textual para e-mail",
         "Portal de Chamados para clientes (estilo GLPI): abertura de chamado com evidências e gravação de tela, prioridades, status, categorias (módulos), SLA por projeto, comentários, anotações com tempo em vídeos, reabertura e notificação por e-mail",
-        "Área interna do portal: aba Chamados (fila em kanban com KPIs e SLA), administração de projetos, módulos e SLA, convite de clientes e gestão de papéis (interno / cliente) e acessos por projeto",
-        "Interface no padrão visual do Portal de Testes do Fluig com a identidade Beyond (marca Control), tela de carregamento e 6 temas (claro, escuro, sépia, terminal, oceano, roza)"
+        "Interface no padrão visual do Portal de Testes do Fluig com a identidade Beyond (marca Control), tela de carregamento e 6 temas (claro, escuro, sépia, terminal, oceano, roza)",
+        "Área interna do portal: aba Chamados (fila em kanban com KPIs e SLA)",
+        "Controle de acesso no padrão do Portal de Testes do Fluig: aba Parâmetros com cadastro de usuários (conta, papel ADMIN/QA/DEV/GESTOR/CLIENTE, substituto, situação), projetos com acesso por usuário (com \"vê todos\" para cliente supervisor), módulos e SLA por projeto, preferências e quadro de permissões; matriz papel x módulo aplicada na tela e reforçada por RLS"
       ],
       "naoInclui": [
         "Execução de testes automatizados (os testes são registrados manualmente)",
@@ -76,7 +100,9 @@
         "Backend próprio: toda a lógica roda no navegador; o servidor é apenas o Supabase (banco, autenticação, arquivos e Edge Functions)",
         "Sincronização automática dos projetos salvos em localStorage: eles ficam só no navegador de quem salvou, até serem enviados para a nuvem",
         "Exportação de ticket para o Microsoft Teams (o botão foi removido; o módulo export-teams.js nunca existiu neste repositório)",
-        "Link que reabre o dashboard com os filtros aplicados: para compartilhar, use Baixar .html ou Imprimir / PDF"
+        "Link que reabre o dashboard com os filtros aplicados: para compartilhar, use Baixar .html ou Imprimir / PDF",
+        "Login único com o Fluig ou com o Microsoft 365: o acesso é por e-mail e senha no Supabase Auth",
+        "Excluir usuário do Supabase Auth pela tela: o padrão é inativar (a conta continua existindo, mas sem acesso)"
       ]
     },
     "stack": [
@@ -93,7 +119,7 @@
       "GitHub Pages: hospedagem estática publicada a partir da branch main do repositório GitHub"
     ],
     "arquitetura": {
-      "resumo": "SPA estática hospedada no GitHub Pages. O index.html monta a casca no padrão do Portal de Testes do Fluig (tela de carregamento, sidebar com grupos, topbar e abas Casos, Planejamento, Tickets, Dashboard e Chamados) e carrega, em ordem, 14 módulos JavaScript da pasta js/ (01-core-state a 14-app-shell) que compartilham estado global no window; não há build nem servidor de aplicação. O js/14-app-shell.js cuida da navegação entre abas, das ações da sidebar (roadmap, retrospectiva, riscos, nuvem, backup, painel), da topbar, do tema e do ciclo da tela de carregamento; os demais módulos renderizam dentro das abas (06 tickets, 07 planejamento, 12 dashboard, 13 portal e chamados). Visual: css/control.css é o design system do portal Fluig com a paleta Beyond; css/beyond.css tem layout, marca (img/logo-control*.png, gerada a partir de nova_logo.png.png), login e a ponte com o style.css legado, que continua servindo os modais antigos. O dashboard desenha o relatório num iframe (srcdoc) com gráficos em SVG e cores lidas dos tokens do tema. O estado da run (testCaseData, ticketData e contadores) fica em memória e é persistido de três formas: (1) localStorage do navegador, para projetos locais e preferências; (2) arquivo JSON exportado/importado pelo usuário; (3) Supabase, onde cada run é gravada na tabela public.cloud_runs com o estado completo em jsonb e o nome do projeto em project_name. Evidências em data-URI acima de 300 KB (vídeos e imagens grandes) vão para o bucket privado evidencias do Supabase Storage, na pasta do próprio usuário (uid/...), e são lidas por URL assinada válida por 7 dias; imagens pequenas ficam em Base64 dentro do jsonb. O login usa Supabase Auth, e o RLS garante que a equipe logada lê todas as runs, mas só o dono cria, altera ou exclui as suas. O Portal de Chamados (js/13-client-portal.js) define o papel do usuário pela tabela profiles (interno ou cliente) e usa as tabelas support_projects, support_modules, sla_policies, client_project_access, support_tickets, support_ticket_comments e support_ticket_evidence_notes, as funções RPC reopen_ticket e seed_default_sla e as Edge Functions notify-ticket (e-mail de notificação) e portal-admin (convite e gestão de usuários, chamada com prazo de 20 s). A URL do projeto Supabase e a chave publishable (pública por design) ficam fixas em js/11-supabase-sync.js; a service_role nunca vai para o front-end. Atenção: o script de schema do portal (sql/13-portal-cliente.sql) e o código das Edge Functions não estão versionados neste repositório; só sql/supabase-setup.sql e sql/supabase-update-v2.sql estão. Legado, fora do fluxo atual: script.js na raiz e a pasta BACKUP/ (versão monolítica antiga, não carregada pelo index.html) e a publicação de backups JSON via API do GitLab (js/10-export-backup-gitlab.js). A pasta backups/ do repositório continua sendo servida pelo GitHub Pages, e o modal de backups do repositório lê backups/index.json do próprio site.",
+      "resumo": "SPA estática hospedada no GitHub Pages. O index.html monta a casca no padrão do Portal de Testes do Fluig (tela de carregamento, sidebar com grupos, topbar e abas Casos, Planejamento, Tickets, Dashboard, Chamados e Parâmetros) e carrega, em ordem, 16 módulos JavaScript da pasta js/ (01-core-state a 16-parametros) que compartilham estado global no window; não há build nem servidor de aplicação. O js/14-app-shell.js cuida da navegação entre abas, das ações da sidebar (roadmap, retrospectiva, riscos, nuvem, backup, painel), da topbar, do tema e do ciclo da tela de carregamento; os demais módulos renderizam dentro das abas (06 tickets, 07 planejamento, 12 dashboard, 13 portal e chamados, 16 parâmetros). Controle de acesso: js/15-permissoes.js tem a mesma matriz papel x módulo do portal Fluig (ADMIN, QA, DEV, GESTOR, CLIENTE e LOCAL para o modo offline) e esconde menus e ações ou deixa telas em somente leitura; o papel vem de profiles.papel, lido no login (js/13). No banco (sql/supabase-update-v3-acessos.sql), is_internal()/is_admin() olham papel e ativo, um trigger impede que alguém que não seja ADMIN altere papel, situação ou acessos, o usuário novo nasce PENDENTE e a função list_app_users() alimenta a tela de usuários. O cadastro cria a conta com um cliente supabase-js separado (sem guardar sessão), então não depende de Edge Function. Visual: css/control.css é o design system do portal Fluig com a paleta Beyond; css/beyond.css tem layout, marca (img/logo-control*.png, gerada a partir de nova_logo.png.png), login e a ponte com o style.css legado, que continua servindo os modais antigos. O dashboard desenha o relatório num iframe (srcdoc) com gráficos em SVG e cores lidas dos tokens do tema. O estado da run (testCaseData, ticketData e contadores) fica em memória e é persistido de três formas: (1) localStorage do navegador, para projetos locais e preferências; (2) arquivo JSON exportado/importado pelo usuário; (3) Supabase, onde cada run é gravada na tabela public.cloud_runs com o estado completo em jsonb e o nome do projeto em project_name. Evidências em data-URI acima de 300 KB (vídeos e imagens grandes) vão para o bucket privado evidencias do Supabase Storage, na pasta do próprio usuário (uid/...), e são lidas por URL assinada válida por 7 dias; imagens pequenas ficam em Base64 dentro do jsonb. O login usa Supabase Auth, e o RLS garante que a equipe logada lê todas as runs, mas só o dono cria, altera ou exclui as suas. O Portal de Chamados (js/13-client-portal.js) define o papel do usuário pela tabela profiles (interno ou cliente) e usa as tabelas support_projects, support_modules, sla_policies, client_project_access, support_tickets, support_ticket_comments e support_ticket_evidence_notes, as funções RPC reopen_ticket e seed_default_sla e a Edge Function notify-ticket (e-mail de notificação). A Edge Function portal-admin não é mais chamada pelo front-end. A URL do projeto Supabase e a chave publishable (pública por design) ficam fixas em js/11-supabase-sync.js; a service_role nunca vai para o front-end. Scripts do banco, em ordem: sql/supabase-setup.sql, sql/supabase-update-v2.sql, sql/13-portal-cliente.sql (recuperado do histórico; o banco em produção tem colunas a mais, como can_view_all e as notas em vídeo) e sql/supabase-update-v3-acessos.sql. O código das Edge Functions não está no repositório. Legado, fora do fluxo atual: script.js na raiz e a pasta BACKUP/ (versão monolítica antiga, não carregada pelo index.html) e a publicação de backups JSON via API do GitLab (js/10-export-backup-gitlab.js). A pasta backups/ do repositório continua sendo servida pelo GitHub Pages, e o modal de backups do repositório lê backups/index.json do próprio site.",
       "diagramas": [
         {
           "titulo": "Visão geral da arquitetura",
@@ -101,7 +127,7 @@
         },
         {
           "titulo": "Casca da aplicação (abas e módulos)",
-          "mermaid": "flowchart TB\n  SPL[Tela de carregamento<br/>img/logo-control-contorno.png] --> LOGIN{Sessão?}\n  LOGIN -- não --> TL[Tela de login<br/>js/11]\n  LOGIN -- sim --> PAPEL{Papel<br/>profiles.role}\n  TL --> PAPEL\n  PAPEL -- cliente --> PC[Portal de Chamados<br/>js/13]\n  PAPEL -- interno ou offline --> SHELL[Casca js/14<br/>sidebar + topbar]\n  SHELL --> A1[Casos de teste<br/>js/03 04 05 08]\n  SHELL --> A2[Planejamento<br/>js/07]\n  SHELL --> A3[Tickets<br/>js/06]\n  SHELL --> A4[Dashboard<br/>js/12]\n  SHELL --> A5[Chamados<br/>js/13]\n  SHELL -. modais .-> M[Roadmap, retrospectiva,<br/>riscos, nuvem, backup, painel]"
+          "mermaid": "flowchart TB\n  SPL[Tela de carregamento<br/>img/logo-control-contorno.png] --> LOGIN{Sessão?}\n  LOGIN -- não --> TL[Tela de login<br/>js/11]\n  LOGIN -- sim --> PAPEL{Papel<br/>profiles.papel}\n  TL --> PAPEL\n  PAPEL -- CLIENTE --> PC[Portal de Chamados<br/>js/13]\n  PAPEL -- PENDENTE ou inativo --> BL[Tela de acesso bloqueado<br/>js/15]\n  PAPEL -- ADMIN / QA / DEV / GESTOR / offline --> SHELL[Casca js/14<br/>matriz de permissões js/15]\n  SHELL --> A1[Casos de teste<br/>js/03 04 05 08]\n  SHELL --> A2[Planejamento<br/>js/07]\n  SHELL --> A3[Tickets<br/>js/06]\n  SHELL --> A4[Dashboard<br/>js/12]\n  SHELL --> A5[Chamados<br/>js/13]\n  SHELL -. modais .-> M[Roadmap, retrospectiva,<br/>riscos, nuvem, backup, painel]\n  SHELL --> A6[Parâmetros ADMIN<br/>js/16]"
         },
         {
           "titulo": "Salvamento de uma run na nuvem",
@@ -125,7 +151,7 @@
         "porta": 443,
         "base": "postgres (schema public)",
         "acesso": "https://supabase.com/dashboard/project/wilxxkkqgoigmrdgufej",
-        "observacao": "A aplicação acessa pela API HTTPS do Supabase (porta 443), não por conexão direta ao Postgres. Tabelas: cloud_runs (runs de teste, estado em jsonb), profiles (papel interno/cliente), support_projects, support_modules, sla_policies, client_project_access, support_tickets, support_ticket_comments e support_ticket_evidence_notes. RLS ativo em todas. Scripts versionados: sql/supabase-setup.sql e sql/supabase-update-v2.sql; o schema do portal (sql/13-portal-cliente.sql) não está no repositório. Acesso ao painel: solicitar via chamado no GLPI."
+        "observacao": "A aplicação acessa pela API HTTPS do Supabase (porta 443), não por conexão direta ao Postgres. Tabelas: cloud_runs (runs de teste, estado em jsonb; só a equipe interna vê), profiles (papel ADMIN/QA/DEV/GESTOR/CLIENTE/PENDENTE, e-mail, substituto, ativo e role derivado), support_projects, support_modules, sla_policies, client_project_access (projetos com acesso e can_view_all), support_tickets, support_ticket_comments e support_ticket_evidence_notes. Funções: is_internal(), is_admin(), my_papel(), list_app_users(), seed_default_sla(), reopen_ticket(). RLS ativo em todas. Scripts versionados em sql/ (setup, v2, 13-portal-cliente, v3-acessos). Acesso ao painel: solicitar via chamado no GLPI."
       },
       {
         "nome": "Supabase: armazenamento de evidências",
@@ -140,7 +166,7 @@
     "integracoes": [
       {
         "nome": "Supabase Auth",
-        "descricao": "Login por e-mail e senha da equipe e dos clientes do portal; a sessão define o dono das runs e o papel no portal.",
+        "descricao": "Login por e-mail e senha da equipe e dos clientes; cadastro de usuários pela aba Parâmetros e e-mail de redefinição de senha (o link volta para o site; a Site URL do Supabase deve apontar para o GitHub Pages).",
         "url": "https://wilxxkkqgoigmrdgufej.supabase.co"
       },
       {
@@ -149,8 +175,8 @@
         "url": "https://wilxxkkqgoigmrdgufej.supabase.co/functions/v1/notify-ticket"
       },
       {
-        "nome": "Supabase Edge Function portal-admin",
-        "descricao": "Operações administrativas do portal: listar usuários, convidar clientes, papéis, acessos por projeto e exclusão de usuários. O front-end chama com prazo de 20 s e mostra o motivo real do erro.",
+        "nome": "Supabase Edge Function portal-admin (fora de uso)",
+        "descricao": "Era usada para listar e criar usuários; devolvia a lista vazia (CONTRO-0001). Desde a versão 1.0.0-reforma-visual.2 o front-end não a chama: a gestão de usuários usa o banco (list_app_users, profiles e client_project_access) e o Supabase Auth.",
         "url": "https://wilxxkkqgoigmrdgufej.supabase.co/functions/v1/portal-admin"
       },
       {

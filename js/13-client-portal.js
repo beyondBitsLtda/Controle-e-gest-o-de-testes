@@ -75,28 +75,29 @@ async function portalOnAuth() {
         const client = sbGetClient();
         if (!client) return;
 
+        // select('*'): antes da atualização v3 do banco não existem papel/ativo.
         const { data, error } = await client
-            .from('profiles').select('role, full_name').eq('id', session.user.id).single();
+            .from('profiles').select('*').eq('id', session.user.id).single();
         if (error) { console.warn('[portal] papel não determinado:', error.message); return; }
 
-        portalRole = data.role;
+        // Sem a coluna papel (banco antigo), vale o comportamento anterior:
+        // interno = acesso total, cliente = portal de chamados.
+        const papel = data.papel || (data.role === 'cliente' ? 'CLIENTE' : 'ADMIN');
+        portalRole = papel === 'CLIENTE' ? 'cliente' : 'interno';
         portalMyName = data.full_name || session.user.email || 'Usuário';
 
         // Usa o nome real do colaborador logado em todo o app (em vez de "Anônimo").
-        try {
-            if (typeof currentAuthor !== 'undefined' && (!currentAuthor || currentAuthor === 'Anônimo')) {
-                window.currentAuthor = portalMyName;
-            }
-            if (typeof userSettings !== 'undefined' && userSettings && (!userSettings.authorName || userSettings.authorName === 'Anônimo')) {
-                userSettings.authorName = portalMyName;
-            }
-        } catch (e) { /* ignore */ }
-
-        if (portalRole === 'cliente') {
-            await portalEnterClientMode();
-        } else {
-            portalInjectInternalButtons();
+        if (!currentAuthor || currentAuthor === 'Anônimo') currentAuthor = portalMyName;
+        if (userSettings && (!userSettings.authorName || userSettings.authorName === 'Anônimo')) {
+            userSettings.authorName = portalMyName;
         }
+
+        if (data.ativo === false || papel === 'PENDENTE') {
+            appMostrarBloqueio(data.ativo === false ? 'INATIVO' : 'PENDENTE');
+            return;
+        }
+        appSetPapel(papel);
+        if (papel === 'CLIENTE') await portalEnterClientMode();
         if (typeof sbUpdateUserChip === 'function') sbUpdateUserChip();
     } catch (e) { console.error('[portal] erro em portalOnAuth:', e); }
     finally { portalRemoveBoot(); }
@@ -113,7 +114,7 @@ function portalRemoveBoot() {
 
 function portalExit() {
     portalRole = null;
-    document.getElementById('portal-internal-btns')?.classList.add('testes-oculto');
+    if (typeof appSetPapel === 'function') appSetPapel('LOCAL');
     document.getElementById('client-portal')?.remove();
     document.body.style.overflow = '';
 }
@@ -140,7 +141,7 @@ function portalRenderEvidence(ev, gridId, targetArray, ctx) {
     const uploadLabel = grid.querySelector('.evidence-upload');
     const wrap = document.createElement('div');
     wrap.className = 'portal-evidence-item';
-    wrap.style.cssText = 'position:relative; width:110px; height:110px; min-width:110px; padding:0; border-radius:8px; overflow:hidden; border:1px solid #ddd; background:#f4f4f4; flex:0 0 auto;';
+    wrap.style.cssText = 'position:relative; width:110px; height:110px; min-width:110px; padding:0; border-radius:8px; overflow:hidden; border:1px solid var(--bb-border,#ddd); background:var(--bb-elevated,#f4f4f4); flex:0 0 auto;';
     let media;
     if (ev.type && ev.type.startsWith('image/')) {
         media = document.createElement('img');
@@ -382,7 +383,7 @@ async function portalOpenVideoCommenter(ticketId, evidenceKey, src, canEdit) {
     modal.style.cssText = 'position:fixed; inset:0; z-index:16500; background:rgba(0,0,0,0.75); display:flex; align-items:center; justify-content:center; padding:14px;';
     const keyAttr = (evidenceKey || '').replace(/"/g, '&quot;');
     modal.innerHTML = `
-      <div style="background:#fff; border-radius:14px; width:min(1200px,98vw); max-height:94vh; overflow:hidden; display:flex; flex-direction:column;">
+      <div style="background:var(--bb-surface,#fff); color:var(--bb-txt1,#1a1d26); border-radius:14px; width:min(1200px,98vw); max-height:94vh; overflow:hidden; display:flex; flex-direction:column;">
         <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid #eee;">
           <h2 style="margin:0; font-size:1.05em; color:#1c2e4a;">Comentar vídeo por momento</h2>
           <button onclick="document.getElementById('pvc-player')?.pause(); document.getElementById('${id}').remove();" style="border:none; background:none; font-size:1.6em; cursor:pointer;">&times;</button>
@@ -702,7 +703,7 @@ function portalSlaBar(t) {
         label = breached ? 'SLA estourado (100%+)' : `${Math.round(pct)}% do SLA consumido`;
     }
     return `<div style="margin-top:6px; max-width:340px;">
-        <div style="height:7px; background:#e6e6e6; border-radius:4px; overflow:hidden;">
+        <div style="height:7px; background:var(--bb-border,#e6e6e6); border-radius:4px; overflow:hidden;">
           <div style="height:100%; width:${pct}%; background:${color}; transition:width 0.3s;"></div>
         </div>
         <div style="font-size:0.7em; color:#888; margin-top:2px;">${label}</div>
@@ -852,16 +853,16 @@ async function portalOpenTicketDetail(ticketId, internalView = false) {
         ${portalSlaBar(t)}` : `
         <div style="margin:8px 0;">${portalBadge(t.status, STATUS_COLORS[t.status])} ${portalBadge(t.priority, PRIORITY_COLORS[t.priority])} ${sla.badge}</div>
         ${portalSlaBar(t)}
-        ${reopenEligible ? `<div style="margin:10px 0; padding:10px; background:#eef7ff; border-radius:8px; font-size:0.85em;">
+        ${reopenEligible ? `<div style="margin:10px 0; padding:10px; background:var(--bb-elevated,#eef7ff); color:var(--bb-txt1,#1a1d26); border-radius:8px; font-size:0.85em;">
             Seu chamado foi resolvido. Se o problema persistir, você pode reabri-lo.
             <button onclick="portalReopenTicket('${t.id}')" style="border:none; background:#e67e22; color:#fff; border-radius:8px; padding:8px 14px; margin-top:6px; cursor:pointer; font-weight:600; display:block;">Reabrir chamado</button>
             <div style="font-size:0.9em; color:#888; margin-top:4px;">Após 2 dias sem reabertura, o chamado será encerrado definitivamente.</div>
           </div>` : ''}
-        ${definitivelyClosed ? `<div style="margin:10px 0; padding:10px; background:#f0f0f0; border-radius:8px; font-size:0.85em; color:#666;">Chamado encerrado. O prazo de reabertura expirou.</div>` : ''}`;
+        ${definitivelyClosed ? `<div style="margin:10px 0; padding:10px; background:var(--bb-elevated,#f0f0f0); border-radius:8px; font-size:0.85em; color:var(--bb-txt2,#666);">Chamado encerrado. O prazo de reabertura expirou.</div>` : ''}`;
 
     const isClosed = t.status === 'Fechado';
     const replyBlock = isClosed ? `
-        <div style="padding:12px; background:#f0f0f0; border-radius:8px; color:#666; font-size:0.88em;">Chamado fechado. Não é possível adicionar comentários ou evidências.</div>
+        <div style="padding:12px; background:var(--bb-elevated,#f0f0f0); border-radius:8px; color:var(--bb-txt2,#666); font-size:0.88em;">Chamado fechado. Não é possível adicionar comentários ou evidências.</div>
     ` : `
         <textarea id="ptc-body" placeholder="Escreva uma resposta..." style="width:100%; min-height:70px; padding:10px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;"></textarea>
         <div style="display:flex; align-items:center; gap:8px; margin:6px 0; flex-wrap:wrap;">
@@ -881,7 +882,7 @@ async function portalOpenTicketDetail(ticketId, internalView = false) {
         <h3 style="margin:0 0 4px;">${portalEscapeHtml(t.title)}</h3>
         <div style="font-size:0.82em; color:#888; margin-bottom:6px;">Módulo: ${mod} · Aberto em ${new Date(t.created_at).toLocaleString('pt-BR')}${internalView ? ` · Projeto: ${t.support_projects?.name||''}`:''}</div>
         ${controls}
-        <div style="background:#f7f9fc; border-radius:8px; padding:12px; margin-bottom:12px; white-space:pre-wrap;">${t.description.replace(/</g,'&lt;')}</div>
+        <div style="background:var(--bb-elevated,#f7f9fc); color:var(--bb-txt1,#1a1d26); border-radius:8px; padding:12px; margin-bottom:12px; white-space:pre-wrap;">${t.description.replace(/</g,'&lt;')}</div>
         <div id="ticket-detail-evidence" class="evidence-grid" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px;"></div>
 
         <h4 style="margin:0 0 8px; border-top:1px solid #eee; padding-top:12px;">Conversa</h4>
@@ -1112,197 +1113,9 @@ async function portalUpdateTicketField(ticketId, field, value) {
     else portalRefreshInternalQueue();
 }
 
-// =====================================================================
-//  GESTÃO DE ACESSOS (interno) — papéis e acesso a projetos
-// =====================================================================
-let portalUsersData = [];
-let portalAllProjects = [];
-let portalAccessExpanded = null;
-
-// Chama a Edge Function portal-admin com prazo e erro legível (CONTRO-0001).
-// Sem prazo, uma chamada que nunca volta deixava o modal em "Carregando
-// usuários..." para sempre; e o erro genérico do supabase-js ("non-2xx")
-// escondia o motivo real, que vem no corpo da resposta.
-const PORTAL_ADMIN_TIMEOUT_MS = 20000;
-
-async function portalAdminInvoke(body) {
-    const client = sbGetClient();
-    if (!client) throw new Error('Cliente do Supabase indisponível. Recarregue a página.');
-    const session = await sbGetSession();
-    if (!session) throw new Error('Sua sessão expirou. Saia e entre novamente.');
-
-    let timer;
-    const timeout = new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error(
-            `A função portal-admin não respondeu em ${PORTAL_ADMIN_TIMEOUT_MS / 1000}s.`)), PORTAL_ADMIN_TIMEOUT_MS);
-    });
-    let result;
-    try {
-        result = await Promise.race([client.functions.invoke('portal-admin', { body }), timeout]);
-    } finally {
-        clearTimeout(timer);
-    }
-    const { data, error } = result;
-    if (error) throw new Error(await portalDescribeFunctionError(error));
-    if (data && data.error) throw new Error(data.error);
-    return data;
-}
-
-// Traduz o erro do functions.invoke numa frase útil para o suporte.
-async function portalDescribeFunctionError(error) {
-    const resp = error && error.context;   // FunctionsHttpError: Response original
-    if (resp && typeof resp.status === 'number') {
-        let detalhe = '';
-        try {
-            const txt = await resp.clone().text();
-            try { const j = JSON.parse(txt); detalhe = j.error || j.message || j.msg || txt; }
-            catch (e) { detalhe = txt; }
-        } catch (e) { /* corpo já lido ou indisponível */ }
-        return `HTTP ${resp.status}${detalhe ? ' - ' + String(detalhe).slice(0, 300) : ''}`;
-    }
-    if (error && error.name === 'FunctionsFetchError') {
-        return 'Não foi possível contatar a função portal-admin (rede ou bloqueio do navegador).';
-    }
-    return (error && error.message) || 'Falha na função';
-}
-
+// Escapa texto livre (título, nomes) antes de ir para o innerHTML.
 function portalEscapeHtml(v) {
     return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-async function portalOpenAccessMgmt() {
-    portalModalShell('portal-access-modal', 'Gerenciar Acessos', `
-        <input id="pac-search" oninput="portalRenderUserList()" placeholder="Buscar por nome ou e-mail..." class="form-input"
-               style="width:100%; padding:9px; border:1px solid var(--bb-border,#ccc); border-radius:8px; box-sizing:border-box; margin-bottom:12px;">
-        <div id="pac-status" style="font-size:0.85em; color:var(--bb-txt2,#888); margin-bottom:8px;">Carregando usuários...</div>
-        <div id="pac-list"></div>
-    `, 940);
-    const status = document.getElementById('pac-status');
-    try {
-        const data = await portalAdminInvoke({ action: 'list_users' });
-        if (!data || !Array.isArray(data.users)) {
-            throw new Error('Resposta inesperada da função portal-admin (sem a lista de usuários).');
-        }
-        // Clientes sem projeto podem vir sem "projects": normaliza para lista.
-        portalUsersData = data.users.map(u => ({ ...u, projects: Array.isArray(u.projects) ? u.projects : [] }));
-        portalAllProjects = Array.isArray(data.all_projects) ? data.all_projects : [];
-        if (status) status.textContent = `${portalUsersData.length} usuário(s).`;
-        portalRenderUserList();
-    } catch (e) {
-        console.error('[portal] Gerenciar acessos:', e);
-        if (!status) return;
-        status.innerHTML = `<span style="color:#c0392b;">Não foi possível carregar os usuários: ${portalEscapeHtml(e.message)}</span>
-            <button type="button" onclick="portalOpenAccessMgmt()" style="margin-left:8px; border:1px solid var(--bb-border,#ccc); background:var(--bb-surface,#fff); color:var(--bb-txt1,#222); border-radius:6px; padding:4px 10px; cursor:pointer; font-size:0.9em;">Tentar de novo</button>
-            <div style="margin-top:6px; font-size:0.9em;">Se persistir, confira os logs da função <strong>portal-admin</strong> no painel do Supabase (Edge Functions &rarr; Logs).</div>`;
-    }
-}
-
-function portalRenderUserList() {
-    const box = document.getElementById('pac-list');
-    if (!box) return;
-    const term = (document.getElementById('pac-search')?.value || '').toLowerCase();
-    const users = portalUsersData.filter(u =>
-        !term || (u.full_name || '').toLowerCase().includes(term) || (u.email || '').toLowerCase().includes(term));
-
-    const colaboradores = users.filter(u => u.role === 'interno');
-    const clientes = users.filter(u => u.role !== 'interno');
-
-    const sectionHeader = (label, count, color) => `
-        <div style="display:flex; align-items:center; gap:10px; margin:14px 0 8px;">
-          <span style="width:10px; height:10px; border-radius:50%; background:${color};"></span>
-          <strong style="color:var(--bb-txt1,#222);">${label}</strong>
-          <span style="font-size:0.8em; color:var(--bb-txt2,#999);">(${count})</span>
-          <span style="flex:1; height:1px; background:var(--bb-border,#e0e0e0);"></span>
-        </div>`;
-
-    let html = '';
-    html += sectionHeader('Colaboradores — plano de testes', colaboradores.length, '#2980b9');
-    html += colaboradores.length ? colaboradores.map(portalUserCard).join('') : '<div style="font-size:0.85em; color:#999; margin-bottom:8px;">Nenhum colaborador.</div>';
-    html += sectionHeader('Clientes — portal de chamados', clientes.length, '#8e44ad');
-    html += clientes.length ? clientes.map(portalUserCard).join('') : '<div style="font-size:0.85em; color:#999;">Nenhum cliente.</div>';
-    box.innerHTML = html;
-}
-
-function portalUserCard(u) {
-    const isInterno = u.role === 'interno';
-    const roleColor = isInterno ? '#2980b9' : '#8e44ad';
-    const projSummary = isInterno ? 'Acesso total (colaborador)'
-        : (u.projects.length ? u.projects.map(p => p.project_name + (p.can_view_all ? ' (supervisor)' : '')).join(', ') : 'Nenhum projeto');
-    const expanded = portalAccessExpanded === u.id;
-    return `
-      <div style="border:1px solid var(--bb-border,#e5e8ef); border-radius:10px; padding:12px 14px; margin-bottom:8px; background:var(--bb-surface,#fff);">
-        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-          <div style="flex:1; min-width:160px;">
-            <div style="font-weight:600; color:var(--bb-txt1,#222);">${portalEscapeHtml(u.full_name || '(sem nome)')}</div>
-            <div style="font-size:0.8em; color:var(--bb-txt2,#888);">${portalEscapeHtml(u.email)}</div>
-          </div>
-          <select onchange="portalSetUserRole('${u.id}', this.value)" style="padding:7px; border-radius:6px; border:1px solid ${roleColor}; color:${roleColor}; font-weight:600; font-size:0.85em; background:var(--bb-surface,#fff);">
-            <option value="cliente" ${!isInterno?'selected':''}>Cliente (portal)</option>
-            <option value="interno" ${isInterno?'selected':''}>Colaborador (testes)</option>
-          </select>
-          ${!isInterno ? `<button onclick="portalAccessExpanded='${expanded?'':u.id}'; portalRenderUserList()" style="border:none; background:var(--bb-copper,#3b6ff0); color:#fff; border-radius:6px; padding:7px 12px; cursor:pointer; font-size:0.85em;">${expanded?'Fechar':'Projetos'}</button>` : ''}
-          <button onclick="portalDeleteUser('${u.id}', '${(u.email||'').replace(/'/g,"")}')" title="Excluir usuário" style="border:1px solid var(--priority-high,#e5484d); background:var(--bb-surface,#fff); color:var(--priority-high,#e5484d); border-radius:6px; padding:7px 10px; cursor:pointer; font-size:0.85em;">Excluir</button>
-        </div>
-        ${!isInterno ? `<div style="font-size:0.78em; color:var(--bb-txt2,#999); margin-top:6px;">Projetos: ${projSummary}</div>` : ''}
-        ${(!isInterno && expanded) ? portalRenderUserProjects(u) : ''}
-      </div>`;
-}
-
-async function portalDeleteUser(userId, email) {
-    if (!confirm(`Excluir definitivamente o usuário ${email}?\n\nIsso remove o login, os acessos e o perfil. Os chamados que ele abriu permanecem no histórico.`)) return;
-    try {
-        await portalAdminInvoke({ action: 'delete_user', user_id: userId });
-        portalUsersData = portalUsersData.filter(u => u.id !== userId);
-        portalRenderUserList();
-    } catch (e) { alert('Erro ao excluir: ' + e.message); }
-}
-
-function portalRenderUserProjects(u) {
-    if (!portalAllProjects.length) return '<div style="margin-top:8px; font-size:0.82em; color:#999;">Nenhum projeto de chamados cadastrado.</div>';
-    return `<div style="margin-top:10px; border-top:1px solid var(--bb-border,#eee); padding-top:10px;">
-        ${portalAllProjects.map(pr => {
-            const acc = u.projects.find(a => a.project_id === pr.id);
-            const has = !!acc;
-            const sup = acc ? acc.can_view_all : false;
-            return `<div style="display:flex; align-items:center; gap:12px; padding:5px 0; font-size:0.85em;">
-                <label style="display:flex; align-items:center; gap:6px; flex:1; cursor:pointer;">
-                  <input type="checkbox" ${has?'checked':''} onchange="portalSetProjectAccess('${u.id}','${pr.id}', this.checked, ${sup})">
-                  ${pr.name}
-                </label>
-                <label style="display:flex; align-items:center; gap:6px; cursor:pointer; opacity:${has?1:0.4};">
-                  <input type="checkbox" ${sup?'checked':''} ${has?'':'disabled'} onchange="portalSetProjectAccess('${u.id}','${pr.id}', true, this.checked)">
-                  Supervisor (vê todos)
-                </label>
-              </div>`;
-        }).join('')}
-      </div>`;
-}
-
-async function portalSetUserRole(userId, role) {
-    try {
-        await portalAdminInvoke({ action: 'set_role', user_id: userId, role });
-        const u = portalUsersData.find(x => x.id === userId);
-        if (u) u.role = role;
-        portalRenderUserList();
-    } catch (e) { alert('Erro ao mudar papel: ' + e.message); }
-}
-
-async function portalSetProjectAccess(userId, projectId, grant, canViewAll) {
-    try {
-        await portalAdminInvoke({ action: 'set_project_access', user_id: userId, project_id: projectId, grant, can_view_all: canViewAll });
-        // Atualiza estado local
-        const u = portalUsersData.find(x => x.id === userId);
-        if (u) {
-            if (grant) {
-                const existing = u.projects.find(p => p.project_id === projectId);
-                if (existing) existing.can_view_all = canViewAll;
-                else u.projects.push({ project_id: projectId, project_name: (portalAllProjects.find(p => p.id === projectId) || {}).name || '', can_view_all: canViewAll });
-            } else {
-                u.projects = u.projects.filter(p => p.project_id !== projectId);
-            }
-        }
-        portalRenderUserList();
-    } catch (e) { alert('Erro ao alterar acesso: ' + e.message); portalOpenAccessMgmt(); }
 }
 
 // =====================================================================
@@ -1328,14 +1141,8 @@ function portalModalShell(id, titleText, innerHTML, maxWidth) {
 function portalCloseModal(id) { document.getElementById(id)?.remove(); }
 
 // =====================================================================
-//  MODO INTERNO — FILA DE CHAMADOS + ADMIN DO PORTAL
+//  MODO INTERNO — FILA DE CHAMADOS (aba Chamados)
 // =====================================================================
-// O grupo "Atendimento" já nasce oculto na sidebar (index.html); aqui só
-// o liberamos para quem tem papel interno.
-function portalInjectInternalButtons() {
-    document.getElementById('portal-internal-btns')?.classList.remove('testes-oculto');
-}
-
 // Aba "Chamados" (js/14-app-shell.js): mesma barra de filtros, faixa de KPIs
 // e kanban do quadro de tickets, no padrão do Portal de Testes do Fluig.
 const PORTAL_QUEUE_COLUMN_TYPES = {
@@ -1556,140 +1363,6 @@ function portalQueueCard(t) {
             <span class="testes-card-ticket__idade ${dias >= 7 && !['Resolvido', 'Fechado'].includes(t.status) ? 'testes-card-ticket__idade--alerta' : ''}" title="Aberto em ${new Date(t.created_at).toLocaleString('pt-BR')}">${idade}</span>
         </div>`;
     return card;
-}
-
-// --- ADMIN: projetos, módulos, SLA, convidar clientes ----------------
-async function portalOpenAdmin() {
-    await portalLoadContext();
-    portalModalShell('portal-admin-modal', 'Gerenciar Portal de Chamados', `
-        <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
-          <select id="pa-project" onchange="portalAdminSelectedProject=this.value; portalRenderAdminBody()" style="flex:1; padding:9px; border-radius:6px; border:1px solid #ccc;">
-            ${portalProjects.map(p => `<option value="${p.id}" ${p.id===portalAdminSelectedProject?'selected':''}>${p.name}</option>`).join('')}
-          </select>
-          <button onclick="portalCreateProject()" style="border:none; background:#3ecf8e; color:#fff; border-radius:6px; padding:9px 14px; cursor:pointer;">Novo projeto</button>
-        </div>
-        <div id="pa-body"></div>
-    `);
-    portalRenderAdminBody();
-}
-
-function portalRenderAdminBody() {
-    const proj = portalCurrentProject();
-    const body = document.getElementById('pa-body');
-    if (!body) return;
-    if (!proj) { body.innerHTML = '<p>Crie um projeto de chamados para começar.</p>'; return; }
-
-    body.innerHTML = `
-      <section style="margin-bottom:18px;">
-        <h4 style="margin:0 0 8px;">Módulos</h4>
-        <div id="pa-modules" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
-          ${(proj.modules||[]).map(m => `<span style="background:#eef2fb; border:1px solid #ccd6ee; border-radius:14px; padding:4px 10px; font-size:0.85em;">${m.name}
-            <a href="#" onclick="portalDeleteModule('${m.id}');return false;" style="color:#c0392b; text-decoration:none; margin-left:4px;">&times;</a></span>`).join('') || '<em style="color:#999;">Nenhum módulo.</em>'}
-        </div>
-        <div style="display:flex; gap:6px;">
-          <input id="pa-new-module" placeholder="Nome do módulo (ex: Financeiro)" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px;">
-          <button onclick="portalAddModule()" style="border:none; background:#3b6ff0; color:#fff; border-radius:6px; padding:8px 14px; cursor:pointer;">Adicionar</button>
-        </div>
-      </section>
-
-      <section style="margin-bottom:18px;">
-        <h4 style="margin:0 0 8px;">SLA por prioridade (horas)</h4>
-        <table style="width:100%; border-collapse:collapse; font-size:0.88em;">
-          <tr style="text-align:left; color:#666;"><th>Prioridade</th><th>1º atendimento</th><th>Resolução</th></tr>
-          ${PORTAL_PRIORITIES.map(p => {
-              const s = (proj.slas||[]).find(x => x.priority === p) || {};
-              return `<tr>
-                <td style="padding:4px 0;">${p}</td>
-                <td><input type="number" min="0" id="sla-resp-${p}" value="${s.response_hours ?? ''}" style="width:80px; padding:5px; border:1px solid #ccc; border-radius:5px;"></td>
-                <td><input type="number" min="0" id="sla-res-${p}" value="${s.resolution_hours ?? ''}" style="width:80px; padding:5px; border:1px solid #ccc; border-radius:5px;"></td>
-              </tr>`;
-          }).join('')}
-        </table>
-        <button onclick="portalSaveSla()" style="border:none; background:#3ecf8e; color:#fff; border-radius:6px; padding:8px 16px; margin-top:8px; cursor:pointer;">Salvar SLA</button>
-      </section>
-
-      <section style="border-top:1px solid #eee; padding-top:14px;">
-        <h4 style="margin:0 0 8px;">Convidar cliente para "${proj.name}"</h4>
-        <div style="display:flex; gap:6px; flex-wrap:wrap;">
-          <input id="pa-cli-name" placeholder="Nome" style="flex:1; min-width:120px; padding:8px; border:1px solid #ccc; border-radius:6px;">
-          <input id="pa-cli-email" placeholder="E-mail" style="flex:1.4; min-width:160px; padding:8px; border:1px solid #ccc; border-radius:6px;">
-          ${portalPasswordField('pa-cli-pass', 'Senha inicial', 'flex:1; min-width:130px;')}
-          <button onclick="portalInviteClient()" style="border:none; background:#8e44ad; color:#fff; border-radius:6px; padding:8px 14px; cursor:pointer;">Criar acesso</button>
-        </div>
-        <label style="font-size:0.85em; display:flex; align-items:center; gap:6px; margin-top:8px; cursor:pointer;">
-          <input type="checkbox" id="pa-cli-viewall"> Este cliente pode ver <b>todos</b> os chamados do projeto (perfil supervisor)
-        </label>
-        <div id="pa-invite-status" style="font-size:0.85em; margin-top:8px; min-height:18px;"></div>
-      </section>`;
-}
-
-async function portalCreateProject() {
-    const name = prompt('Nome do projeto de chamados:');
-    if (!name) return;
-    const client = sbGetClient();
-    const session = await sbGetSession();
-    const { data, error } = await client.from('support_projects')
-        .insert({ name: name.trim(), created_by: session.user.id }).select().single();
-    if (error) { alert('Erro: ' + error.message); return; }
-    await client.rpc('seed_default_sla', { p_project: data.id });   // cria os 4 SLAs padrão
-    portalAdminSelectedProject = data.id;
-    await portalOpenAdmin();
-}
-
-async function portalAddModule() {
-    const name = document.getElementById('pa-new-module').value.trim();
-    if (!name) return;
-    const client = sbGetClient();
-    const { error } = await client.from('support_modules')
-        .insert({ project_id: portalCurrentProject().id, name });
-    if (error) { alert('Erro: ' + error.message); return; }
-    await portalLoadContext(); portalRenderAdminBody();
-}
-
-async function portalDeleteModule(id) {
-    if (!confirm('Remover este módulo?')) return;
-    const client = sbGetClient();
-    const { error } = await client.from('support_modules').delete().eq('id', id);
-    if (error) { alert('Erro: ' + error.message); return; }
-    await portalLoadContext(); portalRenderAdminBody();
-}
-
-async function portalSaveSla() {
-    const client = sbGetClient();
-    const proj = portalCurrentProject();
-    const rows = PORTAL_PRIORITIES.map(p => ({
-        project_id: proj.id, priority: p,
-        response_hours: parseInt(document.getElementById(`sla-resp-${p}`).value || '0', 10),
-        resolution_hours: parseInt(document.getElementById(`sla-res-${p}`).value || '0', 10)
-    }));
-    const { error } = await client.from('sla_policies')
-        .upsert(rows, { onConflict: 'project_id,priority' });
-    if (error) { alert('Erro ao salvar SLA: ' + error.message); return; }
-    await portalLoadContext();
-    alert('SLA salvo!');
-}
-
-async function portalInviteClient() {
-    const name = document.getElementById('pa-cli-name').value.trim();
-    const email = document.getElementById('pa-cli-email').value.trim();
-    const password = document.getElementById('pa-cli-pass').value;
-    const canViewAll = document.getElementById('pa-cli-viewall')?.checked || false;
-    const statusEl = document.getElementById('pa-invite-status');
-    if (!email || password.length < 6) { statusEl.style.color='#c0392b'; statusEl.textContent='E-mail e senha (mín. 6) obrigatórios.'; return; }
-    statusEl.style.color = '#3b6ff0'; statusEl.textContent = 'Criando acesso...';
-
-    // Chama a Edge Function segura (service role) — cria o usuário-cliente.
-    let data;
-    try {
-        data = await portalAdminInvoke({ action: 'create_client', email, password, full_name: name, project_ids: [portalCurrentProject().id], can_view_all: canViewAll });
-    } catch (e) {
-        statusEl.style.color = '#c0392b'; statusEl.textContent = e.message || 'Falha ao criar cliente.'; return;
-    }
-    statusEl.style.color = '#1e8e3e';
-    statusEl.textContent = (data && data.message) ? '' + data.message : `Cliente ${email} criado com acesso a "${portalCurrentProject().name}".`;
-    document.getElementById('pa-cli-name').value = '';
-    document.getElementById('pa-cli-email').value = '';
-    document.getElementById('pa-cli-pass').value = '';
 }
 
 // =====================================================================

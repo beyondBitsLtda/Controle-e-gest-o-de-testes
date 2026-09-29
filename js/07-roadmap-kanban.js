@@ -211,7 +211,8 @@ function showFlowchartModal(caseId) {
     const descriptionTextarea = document.getElementById('flowchart-description');
     const codeTextarea = document.getElementById('flowchart-code');
     const preview = document.getElementById('flowchart-preview');
-    descriptionTextarea.value = '';
+    // O campo de descrição não existe no index.html; o fluxograma só usa o código.
+    if (descriptionTextarea) descriptionTextarea.value = '';
     codeTextarea.value = '';
     preview.innerHTML = '';
     document.getElementById('flowchart-modal').style.display = 'flex';
