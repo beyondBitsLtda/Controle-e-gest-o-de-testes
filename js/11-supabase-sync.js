@@ -307,7 +307,13 @@ async function sbSaveRunToCloud() {
         let dbErr;
         if (existing) ({ error: dbErr } = await client.from('cloud_runs').update(row).eq('id', existing.id));
         else ({ error: dbErr } = await client.from('cloud_runs').insert(row));
-        if (dbErr) throw new Error(dbErr.message);
+        if (dbErr) {
+            // RLS v4: só grava em projeto de teste liberado para o usuário.
+            if (/row-level security/i.test(dbErr.message)) {
+                throw new Error(`Você não tem acesso ao projeto de teste "${projectName}". Peça a um administrador (Parâmetros > Usuários e acessos) ou salve em outro projeto.`);
+            }
+            throw new Error(dbErr.message);
+        }
 
         sbSetStatus('ok', `Run "${runName}" salva no projeto "${projectName}" (${uploaded} mídia(s) no Storage).`);
         document.getElementById('sb-run-name').value = '';

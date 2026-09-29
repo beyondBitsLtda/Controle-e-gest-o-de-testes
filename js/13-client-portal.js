@@ -99,8 +99,30 @@ async function portalOnAuth() {
         appSetPapel(papel);
         if (papel === 'CLIENTE') await portalEnterClientMode();
         if (typeof sbUpdateUserChip === 'function') sbUpdateUserChip();
+        portalVigiarSituacao();
     } catch (e) { console.error('[portal] erro em portalOnAuth:', e); }
     finally { portalRemoveBoot(); }
+}
+
+// Revalida o próprio perfil a cada 2 minutos: inativar ou trocar o papel de
+// alguém vale sem esperar essa pessoa recarregar a página.
+let portalVigiaTimer = null;
+function portalVigiarSituacao() {
+    clearInterval(portalVigiaTimer);
+    portalVigiaTimer = setInterval(async () => {
+        const client = sbGetClient();
+        const session = client && await sbGetSession();
+        if (!session) { clearInterval(portalVigiaTimer); return; }
+        const { data, error } = await client.from('profiles').select('papel, ativo').eq('id', session.user.id).single();
+        if (error || !data) return;
+        if (data.ativo === false || data.papel === 'PENDENTE') {
+            clearInterval(portalVigiaTimer);
+            appMostrarBloqueio(data.ativo === false ? 'INATIVO' : 'PENDENTE');
+        } else if (data.papel && data.papel !== appPapel && appPapel !== 'CLIENTE' && data.papel !== 'CLIENTE') {
+            appSetPapel(data.papel);
+            sbUpdateUserChip();
+        }
+    }, 120000);
 }
 
 // Splash: reaproveita a tela de carregamento do shell (#app-splash, que já
