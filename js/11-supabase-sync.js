@@ -23,6 +23,8 @@ const SB_SIGNED_URL_TTL = 60 * 60 * 24 * 7; // 7 dias
 
 let sbClient = null;
 let sbSession = null;
+let sbRunAtual = null;   // { id, project_name, run_name } da run aberta na tela
+let sbRunsCache = [];    // runs que o usuário pode ver (o RLS filtra pelos projetos liberados)
 
 function sbLoadConfig() {
     try {
@@ -100,6 +102,9 @@ async function sbSignOut() {
     const client = sbGetClient();
     if (client) await client.auth.signOut();
     sbSession = null;
+    sbRunAtual = null;
+    sbRunsCache = [];
+    document.getElementById('casos-contexto')?.classList.add('testes-oculto');
     sbUpdateUserChip();
     sbShowLoginScreen();
 }
@@ -288,10 +293,17 @@ async function sbSaveRunToCloud() {
         }
 
         sbSetStatus('info', 'Gravando run no banco...');
-        const { data: existing, error: selErr } = await client.from('cloud_runs')
-            .select('id').eq('run_name', runName).eq('project_name', projectName)
-            .eq('user_id', session.user.id).maybeSingle();
-        if (selErr) throw new Error(selErr.message);
+        // Mesma run aberta na tela: grava nela, mesmo que outra pessoa a tenha
+        // criado (DEV atualizando tickets, por exemplo - RLS v5). Senão procura
+        // pelo par projeto + nome da run.
+        let existing = (sbRunAtual && sbRunAtual.project_name === projectName && sbRunAtual.run_name === runName)
+            ? { id: sbRunAtual.id } : null;
+        if (!existing) {
+            const { data: achadas, error: selErr } = await client.from('cloud_runs')
+                .select('id').eq('run_name', runName).eq('project_name', projectName).limit(1);
+            if (selErr) throw new Error(selErr.message);
+            existing = (achadas && achadas[0]) || null;
+        }
 
         const row = {
             project_name: projectName,
@@ -304,9 +316,13 @@ async function sbSaveRunToCloud() {
             updated_at: new Date().toISOString()
         };
 
-        let dbErr;
-        if (existing) ({ error: dbErr } = await client.from('cloud_runs').update(row).eq('id', existing.id));
-        else ({ error: dbErr } = await client.from('cloud_runs').insert(row));
+        let dbErr, gravadas;
+        if (existing) ({ data: gravadas, error: dbErr } = await client.from('cloud_runs').update(row).eq('id', existing.id).select('id'));
+        else ({ data: gravadas, error: dbErr } = await client.from('cloud_runs').insert(row).select('id'));
+        // UPDATE barrado pelo RLS não dá erro: volta com 0 linhas.
+        if (!dbErr && (!gravadas || !gravadas.length)) {
+            throw new Error('O banco não permitiu salvar esta run. Seu papel precisa ser ADMIN, QA ou DEV, com acesso ao projeto (e a atualização v5 do banco aplicada).');
+        }
         if (dbErr) {
             // RLS v4: só grava em projeto de teste liberado para o usuário.
             if (/row-level security/i.test(dbErr.message)) {
@@ -317,7 +333,11 @@ async function sbSaveRunToCloud() {
 
         sbSetStatus('ok', `Run "${runName}" salva no projeto "${projectName}" (${uploaded} mídia(s) no Storage).`);
         document.getElementById('sb-run-name').value = '';
+        sbRunAtual = { id: gravadas[0].id, project_name: projectName, run_name: runName };
+        currentLoadedProjectName = runName;
+        if (typeof appUpdateTopbar === 'function') appUpdateTopbar();
         sbListRuns();
+        sbCtxCarregar();
     } catch (error) {
         console.error('Erro ao salvar na nuvem:', error);
         sbSetStatus('error', '' + error.message);
@@ -421,6 +441,8 @@ async function sbLoadCloudRun(runId) {
         sortedData.forEach(testCase => addNewTestCase(testCase));
         testCaseCounter = run.state.counter || sortedData.length;
         currentLoadedProjectName = run.run_name;
+        sbRunAtual = { id: run.id, project_name: run.project_name, run_name: run.run_name };
+        sbCtxSelecionar();
 
         updateSummary();
         if (typeof renderGlobalTagFilter === 'function') renderGlobalTagFilter();
@@ -450,11 +472,92 @@ async function sbDeleteCloudRun(runId, runName) {
         const { error: delErr } = await client.from('cloud_runs').delete().eq('id', runId);
         if (delErr) throw new Error(delErr.message);
         sbSetStatus('ok', `Run "${runName}" excluída.`);
+        if (sbRunAtual && sbRunAtual.id === runId) sbRunAtual = null;
         sbListRuns();
+        sbCtxCarregar();
     } catch (error) {
         console.error('Erro ao excluir run:', error);
         sbSetStatus('error', '' + error.message);
     }
+}
+
+// --- CONTEXTO DA ABA DE CASOS (Projeto -> Run) --------------------------
+// Mesma barra do Portal de Testes do Fluig: quem pode ver os casos escolhe
+// o projeto e a run sem abrir o modal. O RLS já devolve só as runs dos
+// projetos de teste liberados para o usuário.
+function sbPodeSalvarRun() {
+    return typeof permPodeEditar !== 'function' || permPodeEditar('casos') || permPodeEditar('tickets');
+}
+
+async function sbFetchRuns() {
+    const client = sbGetClient();
+    if (!client || !(await sbGetSession())) return [];
+    const { data, error } = await client.from('cloud_runs')
+        .select('id, project_name, run_name, author, media_count, updated_at, user_id')
+        .order('updated_at', { ascending: false });
+    if (error) { console.warn('[Supabase] runs:', error.message); return []; }
+    return data || [];
+}
+
+async function sbCtxCarregar() {
+    const barra = document.getElementById('casos-contexto');
+    if (!barra) return;
+    const session = await sbGetSession();
+    if (!session || (typeof appPapel !== 'undefined' && appPapel === 'CLIENTE')) { barra.classList.add('testes-oculto'); return; }
+    sbRunsCache = await sbFetchRuns();
+    barra.classList.remove('testes-oculto');
+    const projetos = [...new Set(sbRunsCache.map(r => r.project_name || 'Geral'))].sort();
+    const selProj = document.getElementById('ctx-projeto');
+    selProj.innerHTML = projetos.length
+        ? projetos.map(p => `<option value="${sbEsc(p)}">${sbEsc(p)}</option>`).join('')
+        : '<option value="">Nenhum projeto liberado</option>';
+    sbCtxSelecionar();
+    if (Object.keys(testCaseData || {}).length === 0) sbRenderProjetosLiberados('initial-project-list');
+}
+
+function sbCtxSelecionar() {
+    const selProj = document.getElementById('ctx-projeto');
+    if (!selProj) return;
+    if (sbRunAtual && [...selProj.options].some(o => o.value === sbRunAtual.project_name)) selProj.value = sbRunAtual.project_name;
+    sbCtxTrocarProjeto();
+}
+
+function sbCtxTrocarProjeto() {
+    const projeto = document.getElementById('ctx-projeto').value;
+    const selRun = document.getElementById('ctx-run');
+    const runs = sbRunsCache.filter(r => (r.project_name || 'Geral') === projeto);
+    selRun.innerHTML = runs.length
+        ? runs.map(r => `<option value="${r.id}" ${sbRunAtual && sbRunAtual.id === r.id ? 'selected' : ''}>${sbEsc(r.run_name)} - ${new Date(r.updated_at).toLocaleDateString('pt-BR')}</option>`).join('')
+        : '<option value="">Nenhuma run</option>';
+    document.getElementById('ctx-abrir').disabled = !runs.length;
+}
+
+function sbCtxAbrirRun() {
+    const id = document.getElementById('ctx-run').value;
+    if (id) sbLoadCloudRun(id);
+}
+
+// Tela inicial (sem run aberta) com login: projetos de teste liberados.
+function sbRenderProjetosLiberados(containerId) {
+    const box = document.getElementById(containerId);
+    if (!box) return;
+    const titulo = document.getElementById('initial-view-titulo');
+    if (titulo) titulo.textContent = 'Projetos de teste liberados para você';
+    const grupos = {};
+    sbRunsCache.forEach(r => { (grupos[r.project_name || 'Geral'] = grupos[r.project_name || 'Geral'] || []).push(r); });
+    const nomes = Object.keys(grupos).sort();
+    if (!nomes.length) {
+        box.innerHTML = '<div class="testes-placeholder"><span class="testes-placeholder__txt">Nenhum projeto de teste liberado para o seu usuário. Peça a um administrador (Parâmetros &gt; Usuários e acessos).</span></div>';
+        return;
+    }
+    box.innerHTML = nomes.map(p => `<div class="sb-proj sb-proj--aberto">
+        <div class="sb-proj__cab"><span class="sb-proj__nome">${sbEsc(p)}</span><span class="testes-badge testes-badge--cinza">${grupos[p].length} run${grupos[p].length > 1 ? 's' : ''}</span></div>
+        <div class="sb-proj__runs">${grupos[p].map(r => `<div class="sb-run">
+            <div class="sb-run__info"><span class="sb-run__nome">${sbEsc(r.run_name)}</span>
+                <span class="sb-run__meta">${sbEsc(r.author || '')} · atualizada em ${new Date(r.updated_at).toLocaleString('pt-BR')} · ${r.media_count || 0} mídia(s)</span></div>
+            <div class="sb-run__acoes"><button type="button" class="testes-btn testes-btn--primary testes-btn--mini" onclick="sbLoadCloudRun('${r.id}')">Abrir</button></div>
+        </div>`).join('')}</div>
+    </div>`).join('');
 }
 
 // --- MODAL DA NUVEM ---------------------------------------------------
@@ -471,6 +574,11 @@ async function sbOpenModal() {
     const modal = document.getElementById('supabase-modal');
     if (!modal) return;
     document.getElementById('sb-cloud-user').textContent = session.user.email;
+    modal.querySelectorAll('[data-sb-salvar]').forEach(el => el.classList.toggle('testes-oculto', !sbPodeSalvarRun()));
+    if (sbRunAtual) {
+        document.getElementById('sb-project-name').value = sbRunAtual.project_name;
+        document.getElementById('sb-run-name').value = sbRunAtual.run_name;
+    }
     modal.classList.add('testes-modal--aberto');
     sbListRuns();
 }
@@ -498,8 +606,8 @@ function sbInjectUI() {
             <p class="testes-texto-apoio">Conectado como <strong id="sb-cloud-user"></strong></p>
             <div id="sb-status" class="sb-status"></div>
 
-            <h4 class="testes-form__secao">Salvar run atual</h4>
-            <div class="testes-form__linha">
+            <h4 class="testes-form__secao" data-sb-salvar>Salvar run atual</h4>
+            <div class="testes-form__linha" data-sb-salvar>
                 <div class="testes-campo">
                     <label class="testes-campo__label" for="sb-project-name">Projeto</label>
                     <input type="text" id="sb-project-name" class="testes-input" list="sb-project-datalist" placeholder="Ex.: Fluxo de Caixa">
@@ -510,7 +618,7 @@ function sbInjectUI() {
                     <input type="text" id="sb-run-name" class="testes-input" placeholder="Ex.: Sprint 22 - Regressão">
                 </div>
             </div>
-            <div class="sb-salvar">
+            <div class="sb-salvar" data-sb-salvar>
                 <span class="testes-campo__ajuda">Escolha um projeto da lista ou digite um nome novo para criá-lo. Salvar com o mesmo projeto e run sobrescreve.</span>
                 <button type="button" class="testes-btn testes-btn--primary" onclick="sbSaveRunToCloud()">Salvar na nuvem</button>
             </div>
