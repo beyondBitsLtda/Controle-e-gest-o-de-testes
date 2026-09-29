@@ -95,12 +95,10 @@ function clearStagedEvidencePreviews(caseId) {
 function handleResolutionEvidenceUpload(event, ticketId) {
     const files = event.target.files;
     if (!files || files.length === 0) return;
-    if (!ticketData.hasOwnProperty(ticketId)) {
-        ticketData = Object.assign({}, ticketData, { [ticketId]: { ...Object.values(ticketData).find(t => t.id === ticketId), resolutionEvidences: ticketData.hasOwnProperty(ticketId) && ticketData.resolutionEvidences ? ticketData.resolutionEvidences : [] } });
-    } else if (!ticketData.resolutionEvidences) {
-        ticketData.resolutionEvidences = [];
-    }
-    const ticket = ticketData.hasOwnProperty(ticketId) ? ticketData : Object.values(ticketData).find(t => t.id === ticketId);
+    // Antes pegava o mapa inteiro (ticketData) e gravava ticketData.resolutionEvidences,
+    // uma chave falsa que quebrava quem percorre Object.values(ticketData).
+    const ticket = ticketData[ticketId];
+    if (!ticket) return;
 
     for (const file of files) {
         const reader = new FileReader();
@@ -138,7 +136,7 @@ function renderResolutionEvidencePreview(ticketId, evidence) {
 }
 
 function removeResolutionEvidence(ticketId, srcToRemove) {
-    const ticket = ticketData.hasOwnProperty(ticketId) ? ticketData : Object.values(ticketData).find(t => t.id === ticketId);
+    const ticket = ticketData[ticketId];
     if (ticket && ticket.resolutionEvidences) {
         ticket.resolutionEvidences = ticket.resolutionEvidences.filter(e => e.src !== srcToRemove);
     }
@@ -153,7 +151,8 @@ function handlePastedResolutionEvidence(event, ticketId) {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const evidenceData = { src: e.target.result, type: file.type, name: `pasted-resolution-${new Date().toISOString().replace(/[:.]/g, '-')}.png` };
-                const ticket = ticketData.hasOwnProperty(ticketId) ? ticketData : Object.values(ticketData).find(t => t.id === ticketId);
+                const ticket = ticketData[ticketId];
+                if (!ticket) return;
                 if (!ticket.resolutionEvidences) {
                     ticket.resolutionEvidences = [];
                 }

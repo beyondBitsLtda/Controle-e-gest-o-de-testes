@@ -121,44 +121,45 @@ function sbToggleLoginConfig(forceClose) {
 
 function sbInjectLoginScreen() {
     if (document.getElementById('sb-login-screen')) return;
-    const cfg = sbLoadConfig();
     const overlay = document.createElement('div');
     overlay.id = 'sb-login-screen';
-    overlay.style.cssText = 'display:none; position:fixed; inset:0; z-index:20000; background:linear-gradient(135deg, #1c2e4a 0%, #3b6ff0 100%); align-items:center; justify-content:center; font-family:inherit;';
+    overlay.className = 'testes-tokens testes-login';
+    overlay.style.display = 'none';
     overlay.innerHTML = `
-      <div style="background:#fff; border-radius:16px; width:min(420px, 92vw); padding:34px 30px; box-shadow:0 20px 60px rgba(0,0,0,0.35); text-align:center;">
-        <div style="display:inline-block; background:#000; border-radius:16px; padding:10px 18px; margin-bottom:12px;">
-            <img src="logo-login.png" alt="Logo" style="max-height:72px; display:block;" onerror="this.parentElement.style.display='none'">
-        </div>
-        <h1 style="margin:0 0 4px; font-size:1.35em;">Controle de Plano de Testes</h1>
-        <p style="margin:0 0 18px; color:#777; font-size:0.9em;">Entre com sua conta para continuar</p>
+      <div class="testes-login__cartao">
+        <img class="testes-login__logo" src="img/logo-control.png" alt="Control">
+        <h1 class="testes-login__titulo">Controle de Plano de Testes</h1>
+        <p class="testes-login__sub">Entre com sua conta para continuar</p>
 
-        <div id="sb-login-status" style="min-height:20px; font-size:0.87em; margin-bottom:10px;"></div>
+        <div id="sb-login-status" class="testes-login__status"></div>
 
-        <input type="email" id="sb-login-email" class="form-input" placeholder="E-mail"
-               style="width:100%; margin-bottom:10px; padding:11px 12px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
-        <div style="position:relative; margin-bottom:14px;">
-          <input type="password" id="sb-login-password" class="form-input" placeholder="Senha"
-                 style="width:100%; padding:11px 42px 11px 12px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;"
-                 onkeydown="if(event.key==='Enter') sbSignIn()">
-          <button type="button" title="Mostrar/ocultar senha"
-                  onclick="var i=document.getElementById('sb-login-password'); i.type=i.type==='password'?'text':'password'; this.textContent=i.type==='password'?'ver':'ocultar';"
-                  style="position:absolute; right:8px; top:50%; transform:translateY(-50%); border:none; background:none; cursor:pointer; font-size:0.8em; color:#3b6ff0; font-weight:600; line-height:1;">ver</button>
-        </div>
+        <label class="testes-campo">
+          <span class="testes-campo__label">E-mail</span>
+          <input type="email" id="sb-login-email" class="testes-input" placeholder="voce@empresa.com.br" autocomplete="username">
+        </label>
+        <label class="testes-campo">
+          <span class="testes-campo__label">Senha</span>
+          <span class="testes-login__senha">
+            <input type="password" id="sb-login-password" class="testes-input" placeholder="Sua senha" autocomplete="current-password"
+                   onkeydown="if(event.key==='Enter') sbSignIn()">
+            <button type="button" class="testes-login__ver" title="Mostrar/ocultar senha"
+                    onclick="var i=document.getElementById('sb-login-password'); i.type=i.type==='password'?'text':'password'; this.textContent=i.type==='password'?'ver':'ocultar';">ver</button>
+          </span>
+        </label>
 
-        <button class="btn" style="background-color:#3ecf8e; width:100%; padding:11px; font-size:1em; margin-bottom:8px;" onclick="sbSignIn()">Entrar</button>
-        <button class="btn" style="background-color:#3b6ff0; width:100%; padding:11px; font-size:1em;" onclick="sbSignUp()">Criar conta</button>
+        <button type="button" class="testes-btn testes-btn--primary testes-login__acao" onclick="sbSignIn()">Entrar</button>
+        <button type="button" class="testes-btn testes-btn--ghost testes-login__acao" onclick="sbSignUp()">Criar conta</button>
 
-        <div style="display:flex; justify-content:center; align-items:center; margin-top:16px;">
-            <a href="#" onclick="sbSkipLogin(); return false;" style="font-size:0.82em; color:#999; text-decoration:none;">Continuar sem login →</a>
-        </div>
-      </div>`;
+        <a href="#" class="testes-login__pular" onclick="sbSkipLogin(); return false;">Continuar sem login &rarr;</a>
+      </div>
+      <div class="testes-login__rodape">Beyond Bits &middot; Control</div>`;
     document.body.appendChild(overlay);
 }
 
 function sbShowLoginScreen() {
     const el = document.getElementById('sb-login-screen');
     if (el) el.style.display = 'flex';
+    if (typeof appSplashHide === 'function') appSplashHide();
 }
 
 function sbHideLoginScreen() {
@@ -178,23 +179,24 @@ function sbEnterApp() {
     sbLoginStatus('ok', '');
 }
 
-// --- CHIP DE USUÁRIO NA SIDEBAR ---------------------------------------
+// --- USUÁRIO NO RODAPÉ DA SIDEBAR ------------------------------------
 function sbUpdateUserChip() {
-    let chip = document.getElementById('sb-user-chip');
-    const sidebar = document.querySelector('.sidebar');
-    if (!sidebar) return;
-    if (!chip) {
-        chip = document.createElement('div');
-        chip.id = 'sb-user-chip';
-        chip.style.cssText = 'margin-top:10px; padding:8px 10px; border:1px solid #ddd; border-radius:8px; font-size:0.82em; background:#f7f9fc; display:flex; align-items:center; justify-content:space-between; gap:6px;';
-        sidebar.appendChild(chip);
-    }
+    const chip = document.getElementById('sb-user-chip');
+    if (!chip) return;
     if (sbSession && sbSession.user) {
-        chip.innerHTML = `<span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${sbSession.user.email}</span>
-            <button onclick="sbSignOut()" style="border:none; background:#c0392b; color:#fff; border-radius:6px; padding:3px 8px; cursor:pointer; font-size:0.85em; flex-shrink:0;">Sair</button>`;
+        const nome = (typeof portalMyName !== 'undefined' && portalMyName) || sbSession.user.email;
+        const papel = typeof portalRole !== 'undefined' && portalRole === 'interno' ? 'COLABORADOR' : 'CONECTADO';
+        chip.innerHTML = `<span class="testes-sidebar__usuario-nome" title="${sbSession.user.email}">${nome}</span>
+            <span class="testes-sidebar__usuario-linha">
+              <span class="testes-sidebar__usuario-papel">${papel}</span>
+              <a href="#" class="testes-sidebar__usuario-acao" onclick="sbSignOut(); return false;">Sair</a>
+            </span>`;
     } else {
-        chip.innerHTML = `<span style="color:#999;">Modo offline</span>
-            <button onclick="sbShowLoginScreen()" style="border:none; background:#3ecf8e; color:#fff; border-radius:6px; padding:3px 8px; cursor:pointer; font-size:0.85em; flex-shrink:0;">Entrar</button>`;
+        chip.innerHTML = `<span class="testes-sidebar__usuario-nome">Modo offline</span>
+            <span class="testes-sidebar__usuario-linha">
+              <span class="testes-sidebar__usuario-papel testes-sidebar__usuario-papel--offline">SEM NUVEM</span>
+              <a href="#" class="testes-sidebar__usuario-acao" onclick="sbShowLoginScreen(); return false;">Entrar</a>
+            </span>`;
     }
 }
 
@@ -465,23 +467,7 @@ function sbCloseModal() {
 }
 
 function sbInjectUI() {
-    const sidebar = document.querySelector('.sidebar');
-    if (sidebar && !document.getElementById('sb-open-btn')) {
-        const h3 = document.createElement('h3');
-        h3.textContent = 'Nuvem';
-        const btn = document.createElement('button');
-        btn.id = 'sb-open-btn';
-        btn.className = 'btn';
-        btn.style.backgroundColor = '#3ecf8e';
-        btn.textContent = 'Projetos e Runs';
-        btn.onclick = sbOpenModal;
-        const hr = document.createElement('hr');
-        hr.className = 'sidebar-divider';
-        sidebar.appendChild(hr);
-        sidebar.appendChild(h3);
-        sidebar.appendChild(btn);
-    }
-
+    // O atalho "Projetos e runs" já nasce na sidebar (index.html).
     if (document.getElementById('supabase-modal')) return;
     const modal = document.createElement('div');
     modal.id = 'supabase-modal';

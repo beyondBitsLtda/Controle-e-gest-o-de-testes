@@ -1,0 +1,23 @@
+/* ============================================================================
+ * tickets.css - complementos do quadro de Tickets de correção (js/06-tickets.js)
+ * ============================================================================
+ * A base (kanban, cards, badges, modal, evidências, comentários, timeline) vem
+ * do control.css, com as mesmas classes do Portal de Testes do Fluig.
+ * Aqui só o que o legado (style.css) atrapalha.
+ * ============================================================================ */
+
+/* style.css esconde o container (o módulo antigo ligava/desligava com JS);
+   agora quem mostra/esconde é a aba (.testes-tab). */
+#ticket-management-container { display: block; }
+
+/* Modais do quadro (tkModal): no Fluig o Bootstrap 3 dá margem ao <p> dos
+   comentários e line-height 1.43 aos campos. O título do modal fica no
+   beyond.css (vale para todos os modais testes-modal). */
+.tk-modal .testes-coment__texto { margin-bottom: 10px; }
+.tk-modal .testes-textarea { line-height: 1.42857; }
+
+/* A linha do tempo é um <ol>: fora do .testes o reset não alcança e o
+   número da lista aparecia ao lado do ponto. */
+.tk-modal .testes-timeline { margin: 0; list-style: none; }
+
+/* Campos nos temas escuros: a correção geral fica no beyond.css (seção 7). */

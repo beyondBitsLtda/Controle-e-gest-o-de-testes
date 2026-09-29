@@ -26,14 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // document.getElementById('chat-close-btn').onclick = () => toggleChatAssistant(false);
     // document.getElementById('chat-send-btn').onclick = handleSendMessage;
     
-    // Listeners que devem permanecer
-    document.getElementById('view-toggle-btn').onclick = toggleView;
-    document.getElementById('retrospective-btn').onclick = showRetrospective;
-    document.getElementById('analytics-btn').onclick = showAnalyticsPanel;
-    document.getElementById('ticket-filter-status').addEventListener('change', renderTicketKanbanBoard);
-    document.getElementById('ticket-filter-priority').addEventListener('change', renderTicketKanbanBoard);
-    document.getElementById('ticket-filter-assignee').addEventListener('input', renderTicketKanbanBoard);
-    
+    // Navegação (abas e ações da sidebar) fica no js/14-app-shell.js.
+
     // REMOVIDO: O listener de teclado para o chat de IA também foi excluído.
     // document.getElementById('chat-input').addEventListener('keydown', ...);
 });
@@ -94,43 +88,24 @@ function handleProfilePictureUpload(event) {
     reader.readAsDataURL(file);
 }
 
+// Alterna entre a lista de casos e o quadro de planejamento (abas do shell).
 function toggleView() {
-    const listContainer = document.getElementById('test-case-container');
-    const kanbanModal = document.getElementById('kanban-modal');
-    const toggleBtn = document.getElementById('view-toggle-btn');
-    document.getElementById('ticket-management-container').style.display = 'none';
-
-    if (currentView === 'list') {
-        currentView = 'kanban';
-        listContainer.style.display = 'none';
-        toggleBtn.textContent = 'Ver Modo Lista'; // Garante o texto correto
-        renderKanbanBoard();
-        kanbanModal.style.display = 'flex';
-    } else {
-        currentView = 'list';
-        kanbanModal.style.display = 'none';
-        toggleBtn.textContent = 'Ver Quadro de Acompanhamento'; // Garante o texto correto
-        listContainer.style.display = 'block';
-    }
+    appShowTab(currentView === 'kanban' ? 'casos' : 'planejamento');
 }
 
 function showInitialView() {
-    document.getElementById('initial-view-container').style.display = 'block';
+    document.getElementById('initial-view-container').classList.remove('testes-oculto');
     document.getElementById('test-case-container').style.display = 'none';
-    document.getElementById('kanban-board-container').style.display = 'none';
-    document.getElementById('ticket-management-container').style.display = 'none';
-    
+
     // Agora renderiza a lista de Macro-Projetos na view inicial
-    renderMacroProjectsList('initial-project-list', 'load'); 
+    renderMacroProjectsList('initial-project-list', 'load');
 }
 
 function showTestCaseView() {
-    document.getElementById('initial-view-container').style.display = 'none';
-    document.getElementById('ticket-management-container').style.display = 'none';
-    currentView = 'list';
-    document.getElementById('kanban-modal').style.display = 'none';
+    document.getElementById('initial-view-container').classList.add('testes-oculto');
     document.getElementById('test-case-container').style.display = 'block';
-    document.getElementById('view-toggle-btn').textContent = 'Planejamento';
+    currentView = 'list';
+    if (typeof appShowTab === 'function' && appCurrentTab !== 'casos') appShowTab('casos');
 }
 
 function setupConsoleLogger() {

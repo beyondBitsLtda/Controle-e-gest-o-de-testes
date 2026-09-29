@@ -505,6 +505,15 @@ function updateSummary() {
     document.getElementById('total-invalid').textContent = summary.invalid;
     const openTicketsEl = document.getElementById('total-open-tickets');
     if (openTicketsEl) openTicketsEl.textContent = summary.openTickets;
+
+    // KPIs do cabeçalho da aba de casos (mesma faixa do portal Fluig)
+    const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+    setText('total-pending', summary.notRun);
+    setText('total-approved-hint', summary.total ? `${Math.round(summary.approved / summary.total * 100)}% do total` : '');
+    setText('total-failed-hint', summary.failed
+        ? `${summary.inDev} em DEV / ${summary.readyForQa} p/ re-teste${summary.awaitingTicket ? ` / ${summary.awaitingTicket} sem ticket` : ''}`
+        : '');
+    if (typeof appUpdateTopbar === 'function') appUpdateTopbar();
 }
 
 // SUBSTITUA SUA FUNÇÃO generateTicket POR ESTA

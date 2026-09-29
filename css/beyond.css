@@ -1,0 +1,398 @@
+/* ============================================================================
+ * beyond.css - camada da aplicação Control sobre o design system (control.css)
+ * ============================================================================
+ * O control.css é o mesmo sistema visual do Portal de Testes do Fluig.
+ * Aqui fica só o que é desta aplicação:
+ *   1. Layout de tela cheia (sem o frame do portal Fluig)
+ *   2. Marca: logo na sidebar, splash e tela de login
+ *   3. Rodapé do usuário na sidebar
+ *   4. Ponte com o legado (style.css): tokens --bb-*, fonte e modais
+ *   5. Utilitários da aba de casos (busca, console)
+ * ============================================================================ */
+
+/* ---------------------------------------------------------------------------
+   1. LAYOUT DE TELA CHEIA
+   ------------------------------------------------------------------------- */
+body.testes-app-body {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    overflow: hidden;
+    font-family: var(--td-font, 'Barlow', 'Inter', system-ui, sans-serif);
+    background: #F3F5F9;
+}
+
+.testes--app {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+}
+.testes--app .testes-sidebar { position: relative; height: 100%; }
+.testes--app .testes-sidebar__nav { min-height: 0; }
+.testes--app .testes-main { height: 100%; min-height: 0; overflow: hidden; }
+.testes--app .testes-conteudo { min-height: 0; }
+
+/* ---------------------------------------------------------------------------
+   2. MARCA
+   ------------------------------------------------------------------------- */
+.testes-sidebar__brand {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+}
+.testes-sidebar__logo-img {
+    display: block;
+    width: 132px;
+    height: auto;
+}
+.testes-sidebar__sub { color: var(--td-sidebar-fg); opacity: .7; }
+
+/* --- splash ------------------------------------------------------------- */
+.testes-splash--beyond {
+    z-index: 21000;
+    background:
+        radial-gradient(900px 520px at 50% 38%, rgba(59,111,240,.30), transparent 62%),
+        radial-gradient(700px 420px at 88% 108%, rgba(59,111,240,.20), transparent 60%),
+        radial-gradient(520px 360px at 6% -6%, rgba(122,156,255,.14), transparent 60%),
+        linear-gradient(165deg, #0B1020 0%, #070A13 100%);
+}
+/* grade de pontos bem sutil: dá textura sem competir com a marca */
+.testes-splash--beyond::before {
+    content: "";
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    background-image: radial-gradient(rgba(255,255,255,.07) 1px, transparent 1px);
+    background-size: 22px 22px;
+    -webkit-mask-image: radial-gradient(ellipse at 50% 42%, #000 20%, transparent 72%);
+            mask-image: radial-gradient(ellipse at 50% 42%, #000 20%, transparent 72%);
+    pointer-events: none;
+}
+.testes-splash--beyond .testes-splash__centro { position: relative; gap: 26px; max-width: 520px; }
+.testes-splash__logo-img {
+    display: block;
+    width: min(360px, 76vw);
+    height: auto;
+    filter: drop-shadow(0 18px 42px rgba(59,111,240,.45));
+    animation: testes-splash-entra .7s cubic-bezier(.2,.7,.2,1) both,
+               testes-splash-flutua 4.5s 0.7s ease-in-out infinite;
+}
+.testes-splash__produto--centro {
+    align-items: center;
+    text-align: center;
+    animation: testes-splash-entra .7s .1s cubic-bezier(.2,.7,.2,1) both;
+}
+.testes-splash--beyond .testes-splash__produto-sub { color: #9FB2D9; }
+.testes-splash--beyond .testes-splash__trilha { max-width: 340px; background: rgba(255,255,255,.10); }
+.testes-splash--beyond .testes-splash__progresso {
+    background: linear-gradient(90deg, #2A55C4, #3B6FF0 55%, #7A9CFF);
+    box-shadow: 0 0 12px rgba(59,111,240,.7);
+}
+.testes-splash--beyond .testes-splash__msg { color: #9FB2D9; }
+.testes-splash--beyond .testes-splash__rodape { color: #6F83AD; }
+
+@keyframes testes-splash-flutua {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-6px); }
+}
+
+/* --- login -------------------------------------------------------------- */
+.testes-login {
+    position: fixed;
+    top: 0; right: 0; bottom: 0; left: 0;
+    z-index: 20000;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 22px;
+    padding: 16px;
+    font-family: var(--td-font);
+    background:
+        radial-gradient(900px 520px at 50% 30%, rgba(59,111,240,.28), transparent 62%),
+        radial-gradient(700px 420px at 90% 110%, rgba(59,111,240,.18), transparent 60%),
+        linear-gradient(165deg, #0B1020 0%, #070A13 100%);
+}
+.testes-login__cartao {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: min(400px, 100%);
+    padding: 30px 28px 24px;
+    background: var(--td-surface);
+    border: 1px solid var(--td-line);
+    border-radius: var(--td-radius-lg);
+    box-shadow: var(--td-shadow-lg), 0 0 0 1px rgba(59,111,240,.12);
+    color: var(--td-ink);
+}
+.testes-login__logo { display: block; width: 190px; height: auto; margin: 0 auto 4px; }
+.testes-login__titulo { margin: 0; font-size: 20px; font-weight: 600; text-align: center; }
+.testes-login__sub { margin: -6px 0 4px; font-size: 13px; text-align: center; color: var(--td-muted); }
+.testes-login__status { min-height: 18px; font-size: 12.5px; text-align: center; }
+.testes-login .testes-campo { margin: 0; }
+.testes-login .testes-input { width: 100%; height: 40px; }
+.testes-login__senha { position: relative; display: block; }
+.testes-login__senha .testes-input { padding-right: 70px; }
+.testes-login__ver {
+    position: absolute;
+    top: 50%; right: 8px;
+    transform: translateY(-50%);
+    padding: 4px 8px;
+    border: 0;
+    background: none;
+    font-family: var(--td-font);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--td-accent);
+    cursor: pointer;
+}
+.testes-login__acao { width: 100%; height: 40px; justify-content: center; font-size: 14px; }
+.testes-login__pular {
+    align-self: center;
+    margin-top: 4px;
+    font-size: 12.5px;
+    color: var(--td-muted);
+}
+.testes-login a { text-decoration: none; }
+.testes-login a.testes-login__pular:hover { color: var(--td-accent); }
+.testes-login__rodape {
+    font-size: 11px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: #6F83AD;
+}
+
+/* ---------------------------------------------------------------------------
+   3. RODAPÉ DO USUÁRIO NA SIDEBAR
+   ------------------------------------------------------------------------- */
+.testes-sidebar__usuario-nome {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.testes-sidebar__usuario-linha {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.testes-sidebar__usuario-papel--offline { background: var(--td-line-2); color: var(--td-ink); }
+.testes .testes-sidebar__usuario-acao {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--td-sidebar-fg);
+}
+.testes .testes-sidebar__usuario-acao:hover { color: var(--td-white); }
+
+/* ---------------------------------------------------------------------------
+   4. PONTE COM O LEGADO (style.css)
+   -------------------------------------------------------------------------
+   Os modais antigos e o Portal de Chamados usam os tokens --bb-*. No tema
+   claro eles passam a apontar para a paleta do design system; os temas
+   escuros continuam vindo do style.css (html[data-theme=...]).
+   ------------------------------------------------------------------------- */
+:root {
+    --bb-bg: #F3F5F9;
+    --bb-surface: #FFFFFF;
+    --bb-card: #FFFFFF;
+    --bb-elevated: #F8FAFC;
+    --bb-border: #E2E7EF;
+    --bb-border-h: #CBD3DF;
+    --bb-copper: #3B6FF0;
+    --bb-copper-l: #6690F5;
+    --bb-copper-d: #2A55C4;
+    --bb-txt1: #111827;
+    --bb-txt2: #374151;
+    --bb-txt3: #6B7280;
+}
+
+.testes-legado .modal-content,
+#supabase-modal,
+#client-portal,
+#portal-queue-view,
+[id^="portal-"][id$="-modal"] {
+    font-family: var(--td-font, 'Barlow', system-ui, sans-serif);
+}
+.testes-legado .modal-content { border-radius: var(--td-radius-lg); }
+.testes-legado .modal-content h2 { font-weight: 600; letter-spacing: 0; }
+
+/* ---------------------------------------------------------------------------
+   5. UTILITÁRIOS DA ABA DE CASOS
+   ------------------------------------------------------------------------- */
+.testes-oculto-busca { display: none !important; }
+
+.testes-console > summary { list-style: none; cursor: pointer; }
+.testes-console > summary::-webkit-details-marker { display: none; }
+.testes-console__resumo > span::before {
+    content: "\25B8";
+    display: inline-block;
+    margin-right: 8px;
+    color: var(--td-muted);
+    transition: transform .15s;
+}
+.testes-console[open] .testes-console__resumo > span::before { transform: rotate(90deg); }
+.testes-console__saida {
+    max-height: 260px;
+    margin: 0;
+    padding: 10px 14px;
+    overflow-y: auto;
+    font-family: var(--td-mono);
+    font-size: 12px;
+    background: var(--td-surface-2);
+}
+
+/* ---------------------------------------------------------------------------
+   6. CARD DO CASO DE TESTE
+   -------------------------------------------------------------------------
+   O card usa as classes do design system (.testes-caso*). A classe
+   .test-case-card fica só como gancho do JS (filtros, re-testes); aqui
+   neutralizamos o visual que o style.css legado aplica nela.
+   ------------------------------------------------------------------------- */
+.testes .test-case-card.testes-caso,
+body.dark-mode .testes .test-case-card.testes-caso {
+    margin: 0 0 16px;
+    width: auto;
+    background: var(--td-surface);
+    border: 1px solid var(--td-line);
+    border-radius: var(--td-radius);
+    box-shadow: var(--td-shadow);
+}
+.testes .test-case-card.testes-caso:hover { border-color: var(--td-line); }
+.testes .test-case-card.testes-caso--reteste,
+body.dark-mode .testes .test-case-card.testes-caso--reteste {
+    margin-left: 28px;
+    background: var(--td-surface-2);
+}
+.testes .testes-caso .hidden-field { display: none !important; }
+.testes-caso--res-corrigido     { border-color: var(--td-ok); }
+.testes-caso--res-nao-corrigido { border-color: var(--td-line-2); }
+
+/* rótulo "VÍDEO" sobre a miniatura do vídeo */
+.testes-evid__box { position: relative; }
+.testes-evid__ic--sobre {
+    position: absolute;
+    left: 6px; bottom: 6px;
+    z-index: 2;
+}
+.testes-evid__upload { position: relative; }
+
+/* ---------------------------------------------------------------------------
+   7. CAMPOS E BOTÕES SEM A INTERFERÊNCIA DO LEGADO
+   -------------------------------------------------------------------------
+   O style.css estiliza input[type=...], button:hover e, nos temas escuros,
+   html[data-theme] input/select/textarea - todos com especificidade maior
+   que .testes-input. Reafirmamos o visual do design system nos dois escopos
+   onde ele vive (.testes e .testes-tokens).
+   ------------------------------------------------------------------------- */
+.testes .testes-input,
+.testes .testes-select,
+.testes .testes-textarea,
+.testes-tokens .testes-input,
+.testes-tokens .testes-select,
+.testes-tokens .testes-textarea {
+    padding: 8px 10px;
+    border: 1px solid var(--td-line-2);
+    border-radius: var(--td-radius-sm);
+    font-family: var(--td-font);
+    font-size: 13.5px;
+    color: var(--td-ink);
+    background: var(--td-surface);
+    box-shadow: none;
+}
+.testes .testes-select--mini,
+.testes-tokens .testes-select--mini { padding: 4px 8px; font-size: 12px; }
+.testes .testes-input:focus,
+.testes .testes-select:focus,
+.testes .testes-textarea:focus,
+.testes-tokens .testes-input:focus,
+.testes-tokens .testes-select:focus,
+.testes-tokens .testes-textarea:focus {
+    outline: none;
+    border-color: var(--td-accent);
+    box-shadow: 0 0 0 3px var(--td-brand-soft);
+    background: var(--td-surface);
+}
+.testes .testes-input::placeholder,
+.testes .testes-textarea::placeholder,
+.testes-tokens .testes-input::placeholder,
+.testes-tokens .testes-textarea::placeholder { color: var(--td-muted); }
+
+.testes button:hover,
+.testes-tokens button:hover,
+.testes button:active,
+.testes-tokens button:active {
+    transform: none;
+    filter: none;
+}
+.testes .testes-btn:hover,
+.testes-tokens .testes-btn:hover { box-shadow: none; }
+
+/* área de colar/enviar evidência: o legado aumenta e engrossa o texto */
+.testes .testes-evid__colar span,
+.testes .testes-evid__upload span { font-size: 11.5px; font-weight: 400; }
+.testes .evidence-upload.testes-evid__upload,
+.testes .evidence-paste-area.testes-evid__colar {
+    padding: 8px;
+    border: 2px dashed var(--td-line-2);
+    border-radius: var(--td-radius-sm);
+    color: var(--td-muted);
+    background: var(--td-surface-2);
+}
+.testes .evidence-upload.testes-evid__upload:hover,
+.testes .evidence-paste-area.testes-evid__colar:hover { border-color: var(--td-accent); color: var(--td-accent); }
+
+/* anel de foco nos temas escuros: o azul claro "soft" some no fundo escuro */
+.testes--tema-escuro,
+.testes--tema-terminal { --td-brand-soft: rgba(59,111,240,.30); }
+
+/* Temas escuros: o style.css pinta todo input/select/textarea com
+   html[data-theme] ... !important (fundo azulado do legado). No design
+   system voltamos aos tokens - na casca e em todos os modais testes-*. */
+html[data-theme] .testes .testes-input,
+html[data-theme] .testes .testes-select,
+html[data-theme] .testes .testes-textarea,
+html[data-theme] .testes-tokens .testes-input,
+html[data-theme] .testes-tokens .testes-select,
+html[data-theme] .testes-tokens .testes-textarea,
+html[data-theme] .testes-tokens .testes-evid__legenda,
+html[data-theme] .testes .testes-evid__legenda {
+    background: var(--td-surface) !important;
+    color: var(--td-ink) !important;
+    border-color: var(--td-line-2) !important;
+}
+html[data-theme] .testes ::placeholder,
+html[data-theme] .testes-tokens ::placeholder { color: var(--td-muted) !important; }
+
+/* Título dos modais testes-modal: no Fluig o <h3> recebe a margem do
+   Bootstrap 3; aqui repetimos para o cabeçalho ficar igual. */
+.testes-tokens .testes-modal__title { margin: 20px 0 10px; line-height: 1.1; }
+
+/* Contraste nos temas escuros: roxo e azul-marinho do Fluig somem no fundo
+   escuro. --td-crit fica como está (é fundo do selo com texto branco); só o
+   número do KPI "crítico" clareia. */
+.testes--tema-escuro,
+.testes--tema-terminal {
+    --td-roxo:    #A98BE0;
+    --td-mooring: #7F9BDB;
+}
+.testes--tema-escuro .testes-kpi--critico .testes-kpi__valor,
+.testes--tema-terminal .testes-kpi--critico .testes-kpi__valor { color: #FF6B6B; }
+
+/* ---------------------------------------------------------------------------
+   8. ABA CHAMADOS (fila interna do Portal de Chamados)
+   ------------------------------------------------------------------------- */
+.portal-fila__sla-linha { margin: 2px 0 6px; }
+.portal-fila__sla { margin-bottom: 8px; }
+.portal-fila__sla .testes-barra__rotulo { font-size: 11px; }
+
+/* "Projetos salvos" (sem run aberta): o style.css dá padding e centraliza o
+   #initial-view-container; aqui ele é um .testes-card comum. */
+#initial-view-container.testes-card,
+body.dark-mode #initial-view-container.testes-card {
+    padding: 0;
+    margin-bottom: 16px;
+    text-align: left;
+    background: var(--td-surface);
+    border: 1px solid var(--td-line);
+    border-radius: var(--td-radius);
+}
+#initial-view-container.testes-card p { margin-bottom: 12px; color: var(--td-muted); }
