@@ -7,7 +7,9 @@
 // Diferença: aqui o cadastro CRIA a conta (e-mail + senha no Supabase
 // Auth); no Fluig o login já existia. Papel, situação e projetos com
 // acesso ficam em profiles e client_project_access, protegidos por RLS.
-// Requer sql/supabase-update-v3-acessos.sql aplicado no Supabase.
+// Requer sql/supabase-update-v3-acessos.sql e v4-acessos-projetos.sql.
+// Gravações do ADMIN passam por funções do banco (admin_save_user,
+// admin_set_active), que conferem o papel e devolvem o motivo quando barram.
 // Usa os helpers de modal/toast do js/06-tickets.js (tkModal, tkToast,
 // tkConfirmar, tkEl, tkEsc).
 // =====================================================================
@@ -23,7 +25,8 @@ const PAR_PRIORIDADES = ['Crítica', 'Alta', 'Média', 'Baixa'];
 const PAR_PRIORIDADE_BADGE = { 'Crítica': 'critico', 'Alta': 'erro', 'Média': 'aviso', 'Baixa': 'info' };
 
 let parSubaba = 'usuarios';
-let parDados = { usuarios: [], projetos: [], acessos: [], modulos: [], slas: [] };
+let parDados = { usuarios: [], projetos: [], acessos: [], modulos: [], slas: [], projetosTeste: [], acessosTeste: [] };
+let parFaltaV4 = false;
 let parErroBase = '';
 let parFiltro = { busca: '', papel: '' };
 
@@ -54,13 +57,16 @@ async function parCarregar() {
     parErroBase = '';
     const client = sbGetClient();
     if (!client || !(await sbGetSession())) { parErroBase = 'Entre com sua conta para administrar usuários e acessos.'; return; }
-    const [usuarios, projetos, acessos, modulos, slas] = await Promise.all([
+    const [usuarios, projetos, acessos, modulos, slas, projetosTeste, acessosTeste] = await Promise.all([
         client.rpc('list_app_users'),
         client.from('support_projects').select('id, name, description, created_at').order('name'),
         client.from('client_project_access').select('client_id, project_id, can_view_all'),
         client.from('support_modules').select('id, project_id, name, active').order('name'),
-        client.from('sla_policies').select('*')
+        client.from('sla_policies').select('*'),
+        client.rpc('list_test_projects'),
+        client.from('test_project_access').select('user_id, project_name')
     ]);
+    parFaltaV4 = !!(projetosTeste.error || acessosTeste.error);
     if (usuarios.error) {
         const faltaMigracao = /list_app_users|PGRST202|function/i.test(`${usuarios.error.code} ${usuarios.error.message}`);
         parErroBase = faltaMigracao
@@ -72,8 +78,23 @@ async function parCarregar() {
         projetos: projetos.data || [],
         acessos: acessos.data || [],
         modulos: (modulos.data || []).filter(m => m.active !== false),
-        slas: slas.data || []
+        slas: slas.data || [],
+        projetosTeste: projetosTeste.data || [],
+        acessosTeste: acessosTeste.data || []
     };
+}
+
+const PAR_MSG_V4 = 'Falta a atualização v4 do banco: rode sql/supabase-update-v4-acessos-projetos.sql no SQL Editor do Supabase e recarregue.';
+
+// Erro de função do banco -> frase para o usuário
+function parErroRpc(error) {
+    const txt = `${error.code || ''} ${error.message || ''}`;
+    if (/PGRST202|Could not find the function|does not exist/i.test(txt)) return PAR_MSG_V4;
+    return error.message || 'Falha na operação.';
+}
+
+function parAcessosTesteDe(userId) {
+    return parDados.acessosTeste.filter(a => a.user_id === userId).map(a => a.project_name);
 }
 
 function parRenderConteudo() {
@@ -118,6 +139,7 @@ function parRenderUsuarios(host) {
             <div data-par-tabela></div>
         </div>
     </section>`);
+    if (parFaltaV4) host.appendChild(tkEl(`<div class="testes-toolbar testes-toolbar--contexto"><span class="testes-txt-aviso">${parEsc(PAR_MSG_V4)}</span></div>`));
     host.appendChild(card);
     host.appendChild(tkEl(`<p class="testes-texto-apoio">Cada usuário entra no Control com e-mail e senha. Aqui você cria a conta e define o <strong>papel</strong> e os <strong>projetos com acesso</strong>. Quem se cadastra sozinho na tela de login aparece como PENDENTE e não vê nada até ser liberado.</p>`));
 
@@ -135,7 +157,7 @@ function parDesenharTabelaUsuarios(card) {
     const lista = parDados.usuarios.filter(u => {
         if (parFiltro.papel && u.papel !== parFiltro.papel) return false;
         if (!termo) return true;
-        const projetos = parAcessosDe(u.id).map(a => a.nome).join(' ');
+        const projetos = [...parAcessosDe(u.id).map(a => a.nome), ...parAcessosTesteDe(u.id)].join(' ');
         return [u.full_name, u.email, u.papel, u.substituto, projetos].join(' ').toLowerCase().includes(termo);
     });
     if (!lista.length) {
@@ -152,9 +174,11 @@ function parDesenharTabelaUsuarios(card) {
         </tr></thead>
         <tbody>${lista.map(u => {
             const acessos = parAcessosDe(u.id);
-            const projetos = acessos.length
-                ? acessos.map(a => parEsc(a.nome) + (a.can_view_all ? ' <span class="testes-texto-apoio">(vê todos)</span>' : '')).join(', ')
-                : '<span class="testes-texto-apoio">-</span>';
+            const teste = u.papel === 'ADMIN' ? ['todos'] : parAcessosTesteDe(u.id);
+            const linhas = [];
+            if (u.papel !== 'CLIENTE' && teste.length) linhas.push(`<span class="par-proj-rot">Teste:</span> ${teste.map(parEsc).join(', ')}`);
+            if (acessos.length) linhas.push(`<span class="par-proj-rot">Chamados:</span> ${acessos.map(a => parEsc(a.nome) + (a.can_view_all ? ' <span class="testes-texto-apoio">(vê todos)</span>' : '')).join(', ')}`);
+            const projetos = linhas.length ? linhas.join('<br>') : '<span class="testes-texto-apoio">-</span>';
             const situacao = !u.ativo
                 ? '<span class="testes-badge testes-badge--cinza">Não</span>'
                 : `<span class="testes-badge testes-badge--sucesso">Sim</span>${u.email_confirmed_at ? '' : ' <span class="testes-badge testes-badge--aviso" title="O usuário ainda não confirmou o e-mail">E-mail não confirmado</span>'}`;
@@ -211,7 +235,15 @@ function parAbrirFormUsuario(usuario) {
                 <input type="text" class="testes-input" data-f="substituto" value="${parEsc(u.substituto || '')}">
                 <small class="testes-campo__ajuda">Opcional - quem responde nas ausências.</small></div>
         </div>
-        <h4 class="testes-form__secao">Projetos com acesso</h4>
+        <h4 class="testes-form__secao">Projetos de teste com acesso</h4>
+        <p class="testes-texto-apoio">Define quais projetos de teste (runs na nuvem) o usuário vê no Control: casos, tickets, planejamento e dashboard. O ADMIN vê todos. Quem cria a primeira run de um projeto novo ganha acesso a ele automaticamente.</p>
+        <div class="testes-check-lista par-projetos" data-f="lista-teste">${parFaltaV4
+            ? `<div class="testes-placeholder"><span class="testes-placeholder__txt">${parEsc(PAR_MSG_V4)}</span></div>`
+            : (parDados.projetosTeste.length ? parDados.projetosTeste.map(p => `<div class="par-projeto">
+                <label class="testes-check"><input type="checkbox" class="testes-check__input" data-f="proj-teste" value="${parEsc(p.project_name)}" ${parAcessosTesteDe(u.id).includes(p.project_name) ? 'checked' : ''}> <span class="testes-check__txt">${parEsc(p.project_name)}</span></label>
+                <span class="par-projeto__todos">${p.runs} run${p.runs === 1 ? '' : 's'}</span>
+            </div>`).join('') : '<div class="testes-placeholder"><span class="testes-placeholder__txt">Nenhuma run salva na nuvem ainda.</span></div>')}</div>
+        <h4 class="testes-form__secao">Projetos de chamados com acesso</h4>
         <p class="testes-texto-apoio">Para o papel CLIENTE, o vínculo define em quais projetos ele abre e acompanha chamados. Marque <strong>vê todos</strong> para ele acompanhar também os chamados dos outros solicitantes do projeto (supervisor). A equipe interna vê todos os projetos pelo papel.</p>
         <div class="testes-check-lista par-projetos">${parDados.projetos.length ? parDados.projetos.map(p => {
             const a = acessos.find(x => x.project_id === p.id);
@@ -228,7 +260,7 @@ function parAbrirFormUsuario(usuario) {
     const campo = n => c.querySelector(`[data-f="${n}"]`);
     campo('papel').addEventListener('change', e => { campo('papel-ajuda').textContent = PERM_PAPEL_DESC[e.target.value] || ''; });
     campo('ver-senha')?.addEventListener('change', e => { campo('senha').type = e.target.checked ? 'text' : 'password'; });
-    c.querySelectorAll('.par-projeto').forEach(linha => {
+    c.querySelectorAll('.par-projeto[data-projeto]').forEach(linha => {
         const proj = linha.querySelector('[data-f="proj"]'), todos = linha.querySelector('[data-f="todos"]');
         proj.addEventListener('change', () => { todos.disabled = !proj.checked; if (!proj.checked) todos.checked = false; });
     });
@@ -247,7 +279,8 @@ function parAbrirFormUsuario(usuario) {
                     senha: campo('senha') ? campo('senha').value : '',
                     papel: campo('papel').value,
                     substituto: campo('substituto').value.trim(),
-                    projetos: [...c.querySelectorAll('.par-projeto')]
+                    projetosTeste: [...c.querySelectorAll('[data-f="proj-teste"]:checked')].map(x => x.value),
+                    projetos: [...c.querySelectorAll('.par-projeto[data-projeto]')]
                         .filter(l => l.querySelector('[data-f="proj"]').checked)
                         .map(l => ({ project_id: l.dataset.projeto, can_view_all: l.querySelector('[data-f="todos"]').checked }))
                 };
@@ -305,19 +338,13 @@ async function parSalvarUsuario(u, v, novo) {
         }
     }
 
-    const { data: atualizado, error: errPerfil } = await client.from('profiles')
-        .update({ full_name: v.nome, papel: v.papel, substituto: v.substituto || null, ativo: true })
-        .eq('id', userId).select('id');
-    if (errPerfil) throw new Error('Conta criada, mas o perfil não foi salvo: ' + errPerfil.message);
-    if (!atualizado || !atualizado.length) throw new Error('Perfil não encontrado para este usuário. Confira se a atualização v3 do banco foi aplicada.');
-
-    const { error: errDel } = await client.from('client_project_access').delete().eq('client_id', userId);
-    if (errDel) throw new Error('Não foi possível atualizar os projetos: ' + errDel.message);
-    if (v.projetos.length) {
-        const { error: errIns } = await client.from('client_project_access')
-            .insert(v.projetos.map(p => ({ client_id: userId, project_id: p.project_id, can_view_all: p.can_view_all })));
-        if (errIns) throw new Error('Não foi possível gravar os projetos: ' + errIns.message);
-    }
+    // Uma chamada só, no banco: confere se você é ADMIN e grava perfil,
+    // projetos de chamados e projetos de teste na mesma transação.
+    const { error } = await client.rpc('admin_save_user', {
+        p_user: userId, p_nome: v.nome, p_papel: v.papel, p_substituto: v.substituto || '',
+        p_projetos_chamado: v.projetos, p_projetos_teste: v.projetosTeste
+    });
+    if (error) throw new Error((novo ? 'A conta foi criada, mas o perfil não foi salvo: ' : '') + parErroRpc(error));
     return (novo ? `Usuário ${v.email} cadastrado.` : 'Usuário atualizado.') + aviso;
 }
 
@@ -330,8 +357,8 @@ function parAlternarAtivo(u, reativar) {
         textoOk: reativar ? 'Reativar' : 'Inativar',
         tipoOk: reativar ? 'primary' : 'perigo',
         onOk: async () => {
-            const { error } = await sbGetClient().from('profiles').update({ ativo: reativar }).eq('id', u.id);
-            if (error) { tkToast('erro', error.message); return; }
+            const { error } = await sbGetClient().rpc('admin_set_active', { p_user: u.id, p_ativo: reativar });
+            if (error) { tkToast('erro', parErroRpc(error)); return; }
             tkToast('sucesso', reativar ? 'Usuário reativado.' : 'Usuário inativado.');
             await parCarregar();
             parRenderConteudo();
@@ -351,7 +378,7 @@ async function parEnviarRedefinicao(email) {
 function parRenderProjetos(host) {
     const contaAcessos = id => parDados.acessos.filter(a => a.project_id === id).length;
     const projetos = tkEl(`<section class="testes-card">
-        <h3 class="testes-card__titulo">Projetos de atendimento
+        <h3 class="testes-card__titulo">Projetos de chamados (atendimento)
             <button type="button" class="testes-btn testes-btn--primary testes-btn--mini" data-par-novo-projeto>Novo projeto</button>
         </h3>
         <div class="testes-card__corpo">${parDados.projetos.length ? `<div class="testes-tabela-wrap"><table class="testes-tabela">
@@ -380,6 +407,23 @@ function parRenderProjetos(host) {
         </table><div class="testes-tabela__foot">${parDados.modulos.length} registro${parDados.modulos.length === 1 ? '' : 's'}</div></div>`
         : '<div class="testes-placeholder"><span class="testes-placeholder__txt">Nenhum módulo cadastrado.</span></div>'}</div>
     </section>`);
+    const contaTeste = nome => parDados.acessosTeste.filter(a => a.project_name === nome).length;
+    const teste = tkEl(`<section class="testes-card">
+        <h3 class="testes-card__titulo">Projetos de teste (runs na nuvem)</h3>
+        <div class="testes-card__corpo">${parFaltaV4
+            ? `<div class="testes-placeholder"><span class="testes-placeholder__txt">${parEsc(PAR_MSG_V4)}</span></div>`
+            : (parDados.projetosTeste.length ? `<div class="testes-tabela-wrap"><table class="testes-tabela">
+            <thead><tr class="testes-tabela__tr-head"><th class="testes-tabela__th">Projeto</th><th class="testes-tabela__th">Runs</th>
+                <th class="testes-tabela__th">Usuários com acesso</th><th class="testes-tabela__th">Última atualização</th></tr></thead>
+            <tbody>${parDados.projetosTeste.map(p => `<tr class="testes-tabela__tr">
+                <td class="testes-tabela__td"><strong>${parEsc(p.project_name)}</strong></td>
+                <td class="testes-tabela__td">${p.runs}</td>
+                <td class="testes-tabela__td">${contaTeste(p.project_name)} <span class="testes-texto-apoio">+ administradores</span></td>
+                <td class="testes-tabela__td">${p.ultima_atualizacao ? new Date(p.ultima_atualizacao).toLocaleString('pt-BR') : '-'}</td></tr>`).join('')}</tbody>
+        </table><div class="testes-tabela__foot">${parDados.projetosTeste.length} registro${parDados.projetosTeste.length === 1 ? '' : 's'}</div></div>`
+            : '<div class="testes-placeholder"><span class="testes-placeholder__txt">Nenhuma run salva na nuvem ainda. O projeto de teste nasce quando alguém salva a primeira run nele (Projetos e runs).</span></div>')}</div>
+    </section>`);
+    host.appendChild(teste);
     host.appendChild(projetos);
     host.appendChild(modulos);
     host.appendChild(tkEl('<p class="testes-texto-apoio">Os projetos organizam os chamados e definem o que cada cliente vê. Os módulos aparecem no formulário de abertura de chamado, para o solicitante indicar onde o problema ocorreu. Ao criar um projeto, ele já recebe a política de SLA padrão.</p>'));
