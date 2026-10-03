@@ -4,13 +4,13 @@
   "descricao": "Deposi que migramos a hospedagem da vercel para o github não funciona mais, a janela abre e simplismente não carrega os usuários para que eu faça a gerencia.",
   "tipo": "bug",
   "prioridade": "alta",
-  "status": "em-revisao",
+  "status": "concluida",
   "responsavel": "Brayan Rodrigues",
   "prazo": "2026-09-28",
   "versaoAlvo": "0.1.0",
   "criadaEm": "2026-09-27T05:28:22.801Z",
   "criadaPor": "Brayan Rodrigues <brayan.rodrigues@delp.com.br>",
-  "atualizadaEm": "2026-09-29T00:58:04.000Z",
+  "atualizadaEm": "2026-09-30T15:14:36.445Z",
   "comentarios": [
     {
       "quando": "2026-09-28T23:52:42.000Z",
@@ -69,6 +69,11 @@
       "quando": "2026-09-29T00:58:04.000Z",
       "autor": "Brayan Rodrigues (via Claude)",
       "mudanca": "comentário: gravações do ADMIN via funções do banco (versão 1.0.0-reforma-visual.3)"
+    },
+    {
+      "quando": "2026-09-30T15:14:36.445Z",
+      "autor": "Brayan Rodrigues <brayan.rodrigues@delp.com.br>",
+      "mudanca": "situação: em-revisao → concluida"
     }
   ]
 }
